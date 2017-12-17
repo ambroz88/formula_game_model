@@ -1,2 +1,3 @@
-# formula_game_model
-There is all logic behind the application
+# Formula - Game Model
+========================
+This is a model for the "paper game" formulas. Whole logic behind the application. It can be used for many different GUIs.
