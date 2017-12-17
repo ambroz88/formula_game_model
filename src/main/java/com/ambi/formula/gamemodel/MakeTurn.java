@@ -17,10 +17,28 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class MakeTurn {
 
+    public static final int COLLISION = 0;
+    public static final int FIRST_WIN = 1;
+    public static final int SECOND_CHANCE = 2;
+
+    public static final int FOUR_TURNS = 4;
+    public static final int FIVE_TURNS = 5;
+    public static final int NINE_TURNS = 9;
+
+    public static final int LENGTH_3 = 3;
+    public static final int LENGTH_5 = 5;
+    public static final int LENGTH_10 = 10;
+    public static final int LENGTH_20 = 20;
+    public static final int LENGTH_MAX = 999;
+
     private final GameModel model;
     private final HashMap<Integer, Formula> racers;
     private final Polyline colPoints, interPoints;
-    private int actID, rivalID, finishType, turnsCount;
+    private int actID;
+    private int rivalID;
+    private int finishType;
+    private int turnsCount;
+    private int lengthHist;
 
     public MakeTurn(GameModel menu) {
         this.model = menu;
@@ -31,7 +49,9 @@ public class MakeTurn {
         racers.put(2, new Formula());
         actID = 1;
         rivalID = 2;
-        finishType = 2;
+        lengthHist = LENGTH_MAX;
+        finishType = FIRST_WIN;
+        turnsCount = FOUR_TURNS;
     }
 
     public void turn(Point click) {
@@ -43,24 +63,7 @@ public class MakeTurn {
         //--------------------- ZAHAJOVACI TAH --------------------------
         switch (model.getStage()) {
             case GameModel.FIRST_TURN: {
-                Polyline points = model.getPoints();
-                for (int i = 0; i < points.getLength(); i++) {
-                    //uzivatel klikl na jeden z moznych tahu:
-                    if (click.isEqual(points.getPoint(i))) {
-                        act.addPoint(click);
-                        act.addPoint(new Point(click.x + act.getSide(), click.y + act.getSpeed()));
-                        //kdyz hraji dva hraci, smaze se startovni pozice prvniho
-                        if (getActID() == 1) {
-                            points.removePoint(i);//druhy hrac si tuto pozici jiz nemuze vybrat
-                            model.setPoints(points);
-                        } else {
-                            points.clear();
-                            model.setStage(GameModel.NORMAL_TURN);
-                            nextTurn(rivalID, act.getLast());
-                        }
-                        rivalTurns();
-                    }
-                }
+                firstTurn(click);
                 break;
             } // ------------------------ NORMALNI TAH HRACE ------------------------
             case GameModel.NORMAL_TURN: {
@@ -73,7 +76,7 @@ public class MakeTurn {
                         act.addPoint(click);
                         act.movesUp();
                         //hrac protne cilovou caru:
-                        if (points.getPoint(i).getPosition().contains("finish")
+                        if (points.getPoint(i).getPosition().contains(Point.FINISH)
                                 && Track.LEFT == Calc.sidePosition(click, model.getBuilder().getTrack().getFinish())) {
                             //nastaveni informaci o jizde:
                             System.out.println("interpoints size: " + interPoints.getLength());
@@ -82,7 +85,7 @@ public class MakeTurn {
                             act.setWin(true);//hrac je v cili
                             waitTurn(act, "interFinish");
                         }// hrac skonci svuj tah na cilove care
-                        else if ("finishLine".equals(points.getPoint(i).getPosition())) {
+                        else if (Point.FINISH_LINE.equals(points.getPoint(i).getPosition())) {
                             //nastaveni informaci o vzdalenosti:
                             act.lengthUp();
                             waitTurn(act, "normal");
@@ -106,7 +109,7 @@ public class MakeTurn {
                         //pridani pruseciku do tahu formule:
                         act.addPoint(colPoints.getPoint(i));
                         act.lengthUp();
-                        if (finishType == 0) {//konec hry po kolizi
+                        if (getFinishType() == COLLISION) {//konec hry po kolizi
                             model.decision();
                         } else {
                             // pokud hrac 2 take boural, zjisti se kdo vyjede driv
@@ -131,7 +134,7 @@ public class MakeTurn {
                 act.lengthUp();
                 //moznosti tahu:
                 model.setStage(GameModel.NORMAL_TURN);
-                if (finishType == 0) {//konec hry po kolizi
+                if (getFinishType() == COLLISION) {//konec hry po kolizi
                     model.decision();
                 } else {
                     // pokud hrac 2 take boural, zjisti se kdo vyjede driv
@@ -157,6 +160,28 @@ public class MakeTurn {
             }
             default:
                 break;
+        }
+    }
+
+    private void firstTurn(Point click) {
+        Formula act = racers.get(actID);
+        Polyline points = model.getPoints();
+        for (int i = 0; i < points.getLength(); i++) {
+            //uzivatel klikl na jeden z moznych tahu:
+            if (click.isEqual(points.getPoint(i))) {
+                act.addPoint(click);
+                act.addPoint(new Point(click.x + act.getSide(), click.y + act.getSpeed()));
+                //kdyz hraji dva hraci, smaze se startovni pozice prvniho
+                if (getActID() == 1) {
+                    points.removePoint(i);//druhy hrac si tuto pozici jiz nemuze vybrat
+                    model.setPoints(points);
+                } else {
+                    points.clear();
+                    model.setStage(GameModel.NORMAL_TURN);
+                    nextTurn(rivalID, act.getLast());
+                }
+                rivalTurns();
+            }
         }
     }
 
@@ -191,8 +216,8 @@ public class MakeTurn {
         //vsechny moznosti druheho hrace jsou mimo viditelnou oblast:
         // ----------------------- AUTOMATICKY TAH -------------------------
         //pocet moznych tahu: 4,5,9
-        if ((turnOut == 4 && turnsCount == 4) || (turnOut == 5 && turnsCount == 5)
-                || (turnOut == 9 && turnsCount == 9)) {//vsechny moznosti zpusobi naraz
+        if ((turnOut == FOUR_TURNS && turnsCount == FOUR_TURNS) || (turnOut == FIVE_TURNS && turnsCount == FIVE_TURNS)
+                || (turnOut == NINE_TURNS && turnsCount == NINE_TURNS)) {//vsechny moznosti zpusobi naraz
             model.setStage(GameModel.AUTO_CRASH);
             model.fireHint(HintLabels.NEXT_CLOSE_TURN);
         } else if (turnLast > 0 && turnLast == model.getTurns().getPoints().getLength()) {
@@ -349,7 +374,7 @@ public class MakeTurn {
             turns.getTurn(0).setExist(false);
         }
         // upper center
-        if (turnsCount == 9 || crashMode) {
+        if (turnsCount == NINE_TURNS || crashMode) {
             turns.getTurn(1).setPosition(new Point(center.x, center.y - 1));
         } else {
             turns.getTurn(1).setExist(false);
@@ -361,19 +386,19 @@ public class MakeTurn {
             turns.getTurn(2).setExist(false);
         }
         // LEFT
-        if (turnsCount == 9 || crashMode) {
+        if (turnsCount == NINE_TURNS || crashMode) {
             turns.getTurn(3).setPosition(new Point(center.x - 1, center.y));
         } else {
             turns.getTurn(3).setExist(false);
         }
         // center
-        if (turnsCount == 5 || turnsCount == 9) {
+        if (turnsCount == FIVE_TURNS || turnsCount == NINE_TURNS) {
             turns.getTurn(4).setPosition(center);
         } else {
             turns.getTurn(4).setExist(false);
         }
         // RIGHT
-        if (turnsCount == 9 || crashMode) {
+        if (turnsCount == NINE_TURNS || crashMode) {
             turns.getTurn(5).setPosition(new Point(center.x + 1, center.y));
         } else {
             turns.getTurn(5).setExist(false);
@@ -385,7 +410,7 @@ public class MakeTurn {
             turns.getTurn(6).setExist(false);
         }
         // lower center
-        if (turnsCount == 9 || crashMode) {
+        if (turnsCount == NINE_TURNS || crashMode) {
             turns.getTurn(7).setPosition(new Point(center.x, center.y + 1));
         } else {
             turns.getTurn(7).setExist(false);
@@ -586,6 +611,23 @@ public class MakeTurn {
 
     public void setTurns(int turnsCount) {
         this.turnsCount = turnsCount;
+    }
+
+    public int getTurnsCount() {
+        return turnsCount;
+    }
+
+    public int getLengthHist() {
+        return lengthHist;
+    }
+
+    public void setLengthHist(Object lengthHist) {
+        String len = String.valueOf(lengthHist);
+        try {
+            this.lengthHist = Integer.valueOf(len);
+        } catch (NumberFormatException e) {
+            this.lengthHist = LENGTH_MAX;
+        }
     }
 
 }

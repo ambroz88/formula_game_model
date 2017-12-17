@@ -267,8 +267,8 @@ public class GameModel {
      * @param panelClick is point in main panel where user clicked
      */
     public void windowMouseClicked(Point panelClick) {
-        Point click = snapping(new Point(panelClick.x, panelClick.y)); //prichyceni kliknuti na mrizku
-        if (!getPaper().isOutside(click)) {
+        Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
+        if (!getPaper().isOutside(click)) {//TODO: if the turns is through finishline, than it should be valid
             fireHint(HintLabels.EMPTY);
             if (getStage() == BUILD_LEFT) {//left side is build
                 buildTrack.buildTrack(click, Track.LEFT);
@@ -373,7 +373,7 @@ public class GameModel {
     public boolean isTrackEdit(Point panelClick) {
         if (getStage() == EDIT_PRESS) {//faze editace trati
             //urci se premistovany bod
-            Point click = snapping(new Point(panelClick.x, panelClick.y)); //prichyceni kliknuti na mrizku
+            Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
             //pri editaci bodu se urci, ktery bod se bude hybat
             //kontrola, zda se kliklo na bod z leve krajnice
             for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
@@ -412,7 +412,7 @@ public class GameModel {
      */
     public void windowMouseReleased(Point panelClick) {
         if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
-            Point click = snapping(new Point(panelClick.x, panelClick.y)); //prichyceni kliknuti na mrizku
+            Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
             //hledani mozneho pruseciku se zbytkem krajnice
             boolean interRight = false; //premistovany bod z prave krajnice se nekrizi
             boolean interLeft = false; //premistovany bod z leve krajnice se nekrizi

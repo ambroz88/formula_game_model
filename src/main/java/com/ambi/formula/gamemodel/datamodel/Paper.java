@@ -15,7 +15,8 @@ public class Paper {
      * It calculates two polylines which compose square paper.
      */
     public Paper() {
-        this.dim = new Dimension();
+        this.dim = new Dimension(90, 50);
+        updateGrid();
     }
 
     /**

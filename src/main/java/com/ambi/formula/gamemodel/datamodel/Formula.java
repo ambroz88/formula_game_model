@@ -13,7 +13,7 @@ import java.beans.PropertyChangeSupport;
  */
 public class Formula extends Polyline {
 
-    private int speed, side, moves, wait, lengthHist;
+    private int speed, side, moves, wait;
     private Polyline colLine; //two-points line to which this formula crashed
     private Color color;
     private String name;
@@ -47,9 +47,6 @@ public class Formula extends Polyline {
     @Override
     public void addPoint(Point p) {
         super.addPoint(p);
-        if (points.size() - 1 > getLengthHist()) {
-            points.remove(0);
-        }
     }
 
     public Color getColor() {
@@ -178,23 +175,6 @@ public class Formula extends Polyline {
      */
     public Polyline getColision() {
         return colLine;
-    }
-
-    public int getLengthHist() {
-        return lengthHist;
-    }
-
-    public void setLengthHist(Object lengthHist) {
-        String len = String.valueOf(lengthHist);
-        try {
-            this.lengthHist = Integer.valueOf(len);
-        } catch (NumberFormatException e) {
-            this.lengthHist = Integer.MAX_VALUE;
-        }
-
-        while (getLength() > getLengthHist()) {
-            points.remove(0);
-        }
     }
 
     public void setWin(boolean win) {
