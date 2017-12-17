@@ -5,7 +5,7 @@ package com.ambi.formula.gamemodel.datamodel;
  * also information about his position to track. It is good for special cases
  * <b>e.g.</b> position on FINISH line.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Point {
 

@@ -2,7 +2,7 @@ package com.ambi.formula.gamemodel.datamodel;
 
 /**
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Turns {
 

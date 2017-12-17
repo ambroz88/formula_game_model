@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ambi.formula.gamemodel;
 
 import java.util.List;
@@ -15,7 +10,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
 /**
  * This class holds the data and information about objects which are painted.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class CompSimul {
 

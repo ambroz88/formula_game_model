@@ -4,7 +4,7 @@ import java.awt.Dimension;
 
 /**
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Paper {
 

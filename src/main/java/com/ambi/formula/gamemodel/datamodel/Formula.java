@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ambi.formula.gamemodel.datamodel;
 
 import java.awt.Color;
@@ -13,7 +9,7 @@ import java.beans.PropertyChangeSupport;
  * functions and variables. In drawing this polyline has the arrows in each
  * point so it looks like a vector.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Formula extends Polyline {
 

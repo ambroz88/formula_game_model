@@ -12,7 +12,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
  * building the track there are recorded indexes of point (left and right) which
  * show where ends the last well placed track points.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Track {
 

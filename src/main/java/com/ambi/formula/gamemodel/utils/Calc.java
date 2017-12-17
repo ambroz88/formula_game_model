@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ambi.formula.gamemodel.utils;
 
 import java.util.ArrayList;
@@ -16,7 +11,7 @@ import com.ambi.formula.gamemodel.datamodel.Track;
  * This is a class with different matematical operations and methods which are
  * static.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public abstract class Calc {
 

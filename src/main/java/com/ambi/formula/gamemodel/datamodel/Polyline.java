@@ -7,7 +7,7 @@ import java.util.ArrayList;
  * <code>points</code>. It could means line or just separate point which hasn't
  * any order in <code>Arraylist</code>.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class Polyline {
 

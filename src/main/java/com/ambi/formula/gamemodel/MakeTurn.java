@@ -13,7 +13,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
 
 /**
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class MakeTurn {
 

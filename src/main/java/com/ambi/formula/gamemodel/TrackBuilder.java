@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ambi.formula.gamemodel;
 
 import java.beans.PropertyChangeListener;
@@ -19,7 +15,7 @@ import com.ambi.formula.gamemodel.utils.TrackIO;
  * if the point which user clicked could be use as a part of the track and which
  * side.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class TrackBuilder {
 

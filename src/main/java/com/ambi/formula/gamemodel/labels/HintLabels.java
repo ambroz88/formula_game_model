@@ -1,8 +1,3 @@
-/*
- * To change this license header;public final static String  choose License Headers in Project Properties.
- * To change this template file;public final static String  choose Tools | Templates
- * and open the template in the editor.
- */
 package com.ambi.formula.gamemodel.labels;
 
 import java.io.IOException;
@@ -14,7 +9,7 @@ import com.ambi.formula.gamemodel.utils.FileIO;
 
 /**
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class HintLabels {
 

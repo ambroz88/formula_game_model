@@ -17,7 +17,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
  * e.g. for building the track or making next turn. It also fires property
  * changes for GUI.
  *
- * @author Jiří Ambrož <jiri.ambroz@surmon.org>
+ * @author Jiri Ambroz
  */
 public class GameModel {
 
