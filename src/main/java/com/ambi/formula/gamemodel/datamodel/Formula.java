@@ -13,6 +13,9 @@ import java.beans.PropertyChangeSupport;
  */
 public class Formula extends Polyline {
 
+    public static final String SIDE = "side";
+    public static final String FORWARD = "forward";
+
     private int speed, side, moves, wait;
     private Polyline colLine; //two-points line to which this formula crashed
     private Color color;
@@ -158,9 +161,9 @@ public class Formula extends Polyline {
         int maxSpeed = Math.abs((int) (click.getY() - points.get(points.size() - 1).getY()));
         int maxSide = Math.abs((int) (click.getX() - points.get(points.size() - 1).getX()));
         if (maxSpeed > maxSide) {
-            return "speed";
+            return FORWARD;
         } else {
-            return "side";
+            return SIDE;
         }
     }
 

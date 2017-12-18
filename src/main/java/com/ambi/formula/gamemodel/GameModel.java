@@ -2,6 +2,7 @@ package com.ambi.formula.gamemodel;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.IOException;
 import java.util.List;
 
 import com.ambi.formula.gamemodel.datamodel.Paper;
@@ -11,6 +12,7 @@ import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.utils.Calc;
+import com.ambi.formula.gamemodel.utils.TrackIO;
 
 /**
  * This class serves as model for whole game. It communicates with other models
@@ -29,6 +31,7 @@ public class GameModel {
     public final static int NORMAL_TURN = 6;
     public final static int AUTO_CRASH = 7;
     public final static int AUTO_FINISH = 8;
+    public final static int GAME_OVER = 9;
 
     private final CompSimul computer;
     private final TrackBuilder buildTrack;
@@ -64,20 +67,294 @@ public class GameModel {
         computer = new CompSimul(this);
     }
 
+    // ========================== METHODS FROM GUI ===========================
     /**
-     * Metoda zaokrouhli souradnice bodu podle nastaveneho rozmeru mrizky, takze
-     * se bod na mrizku "prichyti".
+     * This is main method that decides what happens when user clicked in the
+     * main pnnel. According the game stage there is launch suitable action.
      *
-     * @param input bod, kteremu se zaokrouhli souradnice
-     * @return point - bod se zaokrouhlenymi souradnicemi
+     * @param click is point in main panel where user clicked
      */
-    public Point snapping(Point input) {
-        //gridSize je velikost mrizky
-        double roundX = Math.round(input.x / gridSize) * gridSize;
-        double roundY = Math.round(input.y / gridSize) * gridSize;
-        double squareX = Math.round(roundX / gridSize);
-        double squareY = Math.round(roundY / gridSize);
-        return new Point(squareX, squareY);
+    public void windowMouseClicked(Point click) {
+        click.toGridUnits(gridSize);
+        if (!getPaper().isOutside(click)) {//TODO: if the turns is through finishline, than it should be valid
+
+            if (getStage() != FIRST_TURN || getStage() == FIRST_TURN && turn.getActID() == 2) {
+                fireHint(HintLabels.EMPTY);
+            }
+
+            if (getStage() == BUILD_LEFT) {//left side is build
+                buildTrack.buildTrack(click, Track.LEFT);
+            } else if (getStage() == BUILD_RIGHT) {//right side is build
+                buildTrack.buildTrack(click, Track.RIGHT);
+            } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_CRASH) {
+                processPlayerTurn(click);
+            }
+
+        } else {
+            fireHint(HintLabels.OUTSIDE);
+        }
+    }
+
+    public void keyPressed(int position) {
+        //phase of the race
+        if (getStage() > FIRST_TURN && getStage() <= AUTO_CRASH && turns.getTurn(position).isExist()) {
+            Point click = turns.getTurn(position).getPosition();
+            processPlayerTurn(click);
+            repaintScene();
+        }
+    }
+
+    private void processPlayerTurn(Point click) {
+        turn.turn(click);
+        checkWinner();
+        //SINGLE mode
+        if (player == 1 && turn.getActID() == 2 && getStage() != FIRST_TURN) {
+            //computer turn
+            click = computer.compTurn();
+            turn.turn(click);
+            if (turn.getActID() == 2) {
+                fireHint(HintLabels.NEXT_COMP_TURN);
+            }
+            checkWinner();
+        }
+    }
+
+    /**
+     * EDITACE BODU - stisknuti mysi
+     *
+     * @param click je bod na hlavnim panelu, kam uzivatel klikl
+     * @return
+     */
+    public boolean isTrackEdit(Point click) {
+        if (getStage() == EDIT_PRESS) {
+
+            click.toGridUnits(gridSize);
+            //pri editaci bodu se urci, ktery bod se bude hybat
+            //kontrola, zda se kliklo na bod z leve krajnice
+            for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
+                if (click.isEqual(buildTrack.getTrack().left().getPoint(i))) {
+                    indexLong = i;//zapamatovani si indexu meniciho se bodu na leve strane
+                    fireHint(HintLabels.EMPTY);
+                    break;
+                }
+            }
+            //kontrola, zda se kliklo na bod z prave krajnice
+            if (indexLong == 0) {
+                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
+                    if (click.isEqual(buildTrack.getTrack().right().getPoint(i))) {
+                        indexShort = i;//zapamatovani si indexu meniciho se bodu na prave strane
+                        fireHint(HintLabels.EMPTY);
+                        break;
+                    }
+                }
+            }
+            setStage(EDIT_RELEASE);
+            if (indexLong == 0 && indexShort == 0) {
+                //pokud se nekliklo na zadny bod, zobrazi se info
+                fireHint(HintLabels.NO_POINT);
+            } else {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * EDITACE BODU - uvolneni mysi
+     *
+     * @param click je bod na hlavnim panelu, kde uzivatel uvolnil mys (coz
+     * znamena misto presunuti bodu trati)
+     */
+    public void windowMouseReleased(Point click) {
+        if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
+            click.toGridUnits(gridSize);
+            //hledani mozneho pruseciku se zbytkem krajnice
+            boolean interRight = false; //premistovany bod z prave krajnice se nekrizi
+            boolean interLeft = false; //premistovany bod z leve krajnice se nekrizi
+
+            //-------- cyklus projde vsechny USECKY LEVE KRAJNICE: -------------
+            for (int i = 0; i < buildTrack.getTrack().left().getLength() - 1; i++) {
+                Polyline actLeft = new Polyline(buildTrack.getTrack().left().getPoint(i), buildTrack.getTrack().left().getPoint(i + 1));
+                // ______ premistovany bod je z prave krajnice: ______
+                if (indexShort > 0) {
+                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
+                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
+                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] != Calc.OUTSIDE
+                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] != Calc.OUTSIDE) {
+                        interRight = true;
+                        break;
+                    }
+                }
+                //______ premistovany bod je z leve krajnice: _______
+                // nesmi se krizit ani s ostatnimi body leve krajnice
+                if (indexLong > 0 && (i < (indexLong - 1) || i > (indexLong))) {
+                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
+                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
+                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] == Calc.INSIDE
+                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] == Calc.INSIDE) {
+                        interLeft = true;
+                    }
+                }
+            }
+            //-------- cyklus projde vsechny USECKY PRAVE KRAJNICE: ------------
+            for (int i = 0; i < buildTrack.getTrack().right().getLength() - 1; i++) {
+                Polyline actRight = new Polyline(buildTrack.getTrack().right().getPoint(i), buildTrack.getTrack().right().getPoint(i + 1));
+                //______ premistovany bod je z leve krajnice: _______
+                if (indexLong > 0) {
+                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
+                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
+                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] != Calc.OUTSIDE
+                            || (int) Calc.crossing(click, newEdge2, actRight)[0] != Calc.OUTSIDE) {
+                        interLeft = true;
+                        break;
+                    }
+                }
+                // ______ premistovany bod je z prave krajnice: ______
+                // nesmi se krizit ani s ostatnimi body prave krajnice
+                if (indexShort > 0 && (i < (indexShort - 1) || i > (indexShort))) {
+                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
+                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
+                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] == Calc.INSIDE
+                            || (int) Calc.crossing(click, newEdge2, actRight)[0] == Calc.INSIDE) {
+                        interRight = true;
+                    }
+                }
+            }
+            //vyhodnoceni pruseciku
+            if (indexShort > 0 && interRight == false) { //zadny prusecik praveho bodu se nenasel
+                buildTrack.changePoint(Track.RIGHT, click, indexShort); //prepsani noveho bodu
+            } else if (indexLong > 0 && interLeft == false) { //zadny prusecik leveho bodu se nenasel
+                buildTrack.changePoint(Track.LEFT, click, indexLong); //prepsani noveho bodu
+            } else if (interRight || interLeft) { //existuje prusecik
+                fireHint(HintLabels.CROSSING);
+            }
+            if (interLeft == false || interRight == false) {
+                //pokud se draha zmenila, prekreslim lomove body
+                Polyline bad = new Polyline(Polyline.CROSS_SET);
+                for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
+                    bad.addPoint(buildTrack.getTrack().left().getPoint(i));
+                }
+                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
+                    bad.addPoint(buildTrack.getTrack().right().getPoint(i));
+                }
+                setBadPoints(bad);
+            }
+            indexLong = 0;
+            indexShort = 0;
+            setStage(EDIT_PRESS);
+        }
+    }
+
+    /**
+     * It prepares game for start - track is correctly drawn. When it is single
+     * mode, track is analysed for computer turns.
+     *
+     * @param playerCount is number of players
+     */
+    public void prepareGame(int playerCount) {
+        if (playerCount == 1) { //single mode
+            computer.setTrackIndex(0);
+            checkLines = buildTrack.getTrack().analyzeTrack();
+        }
+        resetPlayers();
+        setPoints(turn.startPosition(buildTrack.getTrack().getStart()));
+        buildTrack.getTrack().setLeftWidth(3);
+        buildTrack.getTrack().setRightWidth(3);
+
+        setStage(FIRST_TURN);
+        player = playerCount;
+        turn.setID(1, 2);   //it says which formula is on turn and which is second
+        fireHint(HintLabels.START_POSITION);
+        firePropertyChange("startGame", 0, turn.getActID()); // cought by Draw and TrackMenu
+    }
+
+    /**
+     * Method for switching start and finish. It doesn't draw new start
+     * positions. It deletes and restarts variables so game will be ready to
+     * start.
+     */
+    public void switchStart() {
+        setStage(BUILD_LEFT);
+        getBuilder().getTrack().switchStart();
+        resetPlayers();
+    }
+
+    public boolean saveTrack(String trackName) {
+        boolean saved;
+        try {
+            TrackIO.trackToJSON(getBuilder().getTrack(), trackName);
+            // cought by TrackTopComponent:
+            firePropertyChange("newTrack", false, true);
+            fireHint(HintLabels.HINT_SAVED);
+            saved = true;
+        } catch (IOException ex) {
+            fireHint(HintLabels.HINT_FAILED);
+            saved = false;
+        }
+        return saved;
+    }
+
+    /**
+     * Method for clearing whole scene: track, formulas and points.
+     */
+    public void resetGame() {
+        setStage(BUILD_LEFT);
+        buildTrack.getTrack().reset();
+        resetPlayers();
+    }
+
+    /**
+     * Method for clearing formulas and points.
+     */
+    public void resetPlayers() {
+        turn.getFormula(1).reset();
+        turn.getFormula(2).reset();
+        resetPoints();
+    }
+
+    /**
+     * Method for clearing points.
+     */
+    public void resetPoints() {
+        points.clear();
+        badPoints.clear();
+        repaintScene();
+    }
+
+    public void checkWinner() {
+
+        if (turn.getFormula(2).getWin() == true) {
+            winnerAnnoucment();
+        } else if (turn.getFormula(1).getWin() == true && turn.getFinishType() != MakeTurn.SECOND_CHANCE) {
+            winnerAnnoucment();
+        }
+
+    }
+
+    /**
+     * It generates the message about winner and game is finished.
+     */
+    public void winnerAnnoucment() {
+        points.clear();
+        badPoints.clear();
+        setStage(GAME_OVER);
+        String finalMessage;
+
+        if (turn.getFormula(1).getWin() && turn.getFormula(2).getWin() == false) {
+            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
+        } else if (turn.getFormula(2).getWin() && turn.getFormula(1).getWin() == false) {
+            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
+        } //oba souperi projeli cilem a rozhoduje mensi ujeta vzdalenost
+        else if (turn.getFormula(1).getDist() < turn.getFormula(2).getDist()) {
+            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
+        } else if (turn.getFormula(1).getDist() > turn.getFormula(2).getDist()) {
+            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
+        } else {
+            finalMessage = hintLabels.getValue(HintLabels.BOTH_WIN);
+        }
+
+        firePropertyChange("winner", "", finalMessage); // cought by StatBar
+        repaintScene();
     }
 
     //============================ FIRE CHANGES TO GUI =========================
@@ -110,7 +387,12 @@ public class GameModel {
         setStage(BUILD_LEFT);
         firePropertyChange("buildTrack", false, true);
         firePropertyChange("startDraw", false, true); // cought by TrackMenu and Draw
-        reset("player");
+        resetPlayers();
+    }
+
+    public void loadSelectedTrack() {
+        //cought by TracksComponent
+        firePropertyChange("loadTrack", false, true);
     }
 
     //============================ SETTERS AND GETTERS =========================
@@ -212,321 +494,6 @@ public class GameModel {
 
     public List<Polyline> getCheckLines() {
         return checkLines;
-    }
-
-    /**
-     * Method for clearing scene: always it deletes all points. It could be
-     * delete more things - it depends on parameter task.
-     *
-     * @param task if it is "player" - formulas are deleted; "game" - all is
-     * deleted (track, formulas, statistics)
-     */
-    public void reset(String task) {
-        points.clear();
-        badPoints.clear();
-        if (task.equals("")) {
-            fireHint(HintLabels.EMPTY);
-        } else {
-            turn.getFormula(1).reset();
-            turn.getFormula(2).reset();
-            if (task.equals("game")) {
-                setStage(BUILD_LEFT);
-                buildTrack.getTrack().reset();
-            }
-        }
-    }
-
-    /**
-     * Zobrazeni zpravy o vitezi na informacni panel. Ukonceni hry.
-     */
-    public void decision() {
-        points.clear();
-        badPoints.clear();
-        setStage(9); //konec hry
-        String finalMessage;
-        if (turn.getFormula(1).getWin() && turn.getFormula(2).getWin() == false) {
-            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else if (turn.getFormula(2).getWin() && turn.getFormula(1).getWin() == false) {
-            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } //oba souperi projeli cilem a rozhoduje mensi ujeta vzdalenost
-        else if (turn.getFormula(1).getDist() < turn.getFormula(2).getDist()) {
-            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else if (turn.getFormula(1).getDist() > turn.getFormula(2).getDist()) {
-            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else {
-            finalMessage = hintLabels.getValue(HintLabels.BOTH_WIN);
-        }
-        firePropertyChange("winner", "", finalMessage); // cought by StatBar
-    }
-
-    // ========================== METHODS FROM GUI ===========================
-    /**
-     * This is main method that decides what happens when user clicked in the
-     * main pnnel. According the game stage there is launch suitable action.
-     *
-     * @param panelClick is point in main panel where user clicked
-     */
-    public void windowMouseClicked(Point panelClick) {
-        Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
-        if (!getPaper().isOutside(click)) {//TODO: if the turns is through finishline, than it should be valid
-            fireHint(HintLabels.EMPTY);
-            if (getStage() == BUILD_LEFT) {//left side is build
-                buildTrack.buildTrack(click, Track.LEFT);
-            } else if (getStage() == BUILD_RIGHT) {//right side is build
-                buildTrack.buildTrack(click, Track.RIGHT);
-            } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_CRASH) {//faze hry behem zavodu
-                if (player == 1) { //herni mod SINGLE
-                    turn.turn(click);
-                    if (turn.getActID() == 1) {
-                        if (getStage() == FIRST_TURN) {
-                            fireHint(HintLabels.START_POSITION);
-                        }
-                    }
-                    //kontrola konce hry:
-                    if (turn.getFinishType() == 1 && turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                        decision();
-                    } else if (turn.getActID() == 2 && getStage() != FIRST_TURN) {
-                        //pokracuje tahem pocitac
-                        click = computer.compTurn();
-                        turn.turn(click);
-                        if (turn.getActID() == 2) {
-                            fireHint(HintLabels.NEXT_COMP_TURN);
-                        }
-                    }
-                    //kontrola konce hry:
-                    if (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                        decision();
-                    }
-                } else// herni mod DUEL
-                {
-                    if (turn.getActID() == 1) {//hraje hrac 1
-                        turn.turn(click);
-                        //kontrola konce hry:
-                        if (turn.getFinishType() == 1 && (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true)) {
-                            decision();
-                        }
-                    } else { //hraje hrac 2
-                        turn.turn(click);
-                        //kontrola konce hry:
-                        if (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                            decision();
-                        }
-                    }
-                }
-            }
-        } else {
-            fireHint(HintLabels.OUTSIDE);
-        }
-    }
-
-    public void keyPressed(int position) {
-        if (getStage() > FIRST_TURN && getStage() <= AUTO_CRASH && turns.getTurn(position).isExist()) {//faze hry behem zavodu
-            Point click = turns.getTurn(position).getPosition();
-            if (player == 1) { //herni mod SINGLE
-                turn.turn(click);
-                if (turn.getActID() == 1) {
-                    if (getStage() == FIRST_TURN) {
-                        fireHint(HintLabels.START_POSITION);
-                    }
-                }
-                //kontrola konce hry:
-                if (turn.getFinishType() == 1 && turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                    decision();
-                } else if (turn.getActID() == 2 && getStage() != FIRST_TURN) {
-                    //pokracuje tahem pocitac
-                    click = computer.compTurn();
-                    turn.turn(click);
-                    if (turn.getActID() == 2) {
-                        fireHint(HintLabels.NEXT_COMP_TURN);
-                    }
-                }
-                //kontrola konce hry:
-                if (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                    decision();
-                }
-            } else// herni mod DUEL
-            {
-                if (turn.getActID() == 1) {//hraje hrac 1
-                    turn.turn(click);
-                    //kontrola konce hry:
-                    if (turn.getFinishType() == 1 && (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true)) {
-                        decision();
-                    }
-                } else { //hraje hrac 2
-                    turn.turn(click);
-                    //kontrola konce hry:
-                    if (turn.getFormula(1).getWin() == true || turn.getFormula(2).getWin() == true) {
-                        decision();
-                    }
-                }
-            }
-            firePropertyChange("repaint", false, true);
-        }
-    }
-
-    /**
-     * EDITACE BODU - stisknuti mysi
-     *
-     * @param panelClick je bod na hlavnim panelu, kam uzivatel klikl
-     * @return
-     */
-    public boolean isTrackEdit(Point panelClick) {
-        if (getStage() == EDIT_PRESS) {//faze editace trati
-            //urci se premistovany bod
-            Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
-            //pri editaci bodu se urci, ktery bod se bude hybat
-            //kontrola, zda se kliklo na bod z leve krajnice
-            for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                if (click.isEqual(buildTrack.getTrack().left().getPoint(i))) {
-                    indexLong = i;//zapamatovani si indexu meniciho se bodu na leve strane
-                    fireHint(HintLabels.EMPTY);
-                    break;
-                }
-            }
-            //kontrola, zda se kliklo na bod z prave krajnice
-            if (indexLong == 0) {
-                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                    if (click.isEqual(buildTrack.getTrack().right().getPoint(i))) {
-                        indexShort = i;//zapamatovani si indexu meniciho se bodu na prave strane
-                        fireHint(HintLabels.EMPTY);
-                        break;
-                    }
-                }
-            }
-            setStage(EDIT_RELEASE);
-            if (indexLong == 0 && indexShort == 0) {
-                //pokud se nekliklo na zadny bod, zobrazi se info
-                fireHint(HintLabels.NO_POINT);
-            } else {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * EDITACE BODU - uvolneni mysi
-     *
-     * @param panelClick je bod na hlavnim panelu, kde uzivatel uvolnil mys (coz
-     * znamena misto presunuti bodu trati)
-     */
-    public void windowMouseReleased(Point panelClick) {
-        if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
-            Point click = snapping(panelClick); //prichyceni kliknuti na mrizku
-            //hledani mozneho pruseciku se zbytkem krajnice
-            boolean interRight = false; //premistovany bod z prave krajnice se nekrizi
-            boolean interLeft = false; //premistovany bod z leve krajnice se nekrizi
-
-            //-------- cyklus projde vsechny USECKY LEVE KRAJNICE: -------------
-            for (int i = 0; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                Polyline actLeft = new Polyline(buildTrack.getTrack().left().getPoint(i), buildTrack.getTrack().left().getPoint(i + 1));
-                // ______ premistovany bod je z prave krajnice: ______
-                if (indexShort > 0) {
-                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
-                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] != -1
-                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] != -1) {
-                        interRight = true;
-                        break;
-                    }
-                }
-                //______ premistovany bod je z leve krajnice: _______
-                // nesmi se krizit ani s ostatnimi body leve krajnice
-                if (indexLong > 0 && (i < (indexLong - 1) || i > (indexLong))) {
-                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
-                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] == 1
-                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] == 1) {
-                        interLeft = true;
-                    }
-                }
-            }
-            //-------- cyklus projde vsechny USECKY PRAVE KRAJNICE: ------------
-            for (int i = 0; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                Polyline actRight = new Polyline(buildTrack.getTrack().right().getPoint(i), buildTrack.getTrack().right().getPoint(i + 1));
-                //______ premistovany bod je z leve krajnice: _______
-                if (indexLong > 0) {
-                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
-                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] != -1
-                            || (int) Calc.crossing(click, newEdge2, actRight)[0] != -1) {
-                        interLeft = true;
-                        break;
-                    }
-                }
-                // ______ premistovany bod je z prave krajnice: ______
-                // nesmi se krizit ani s ostatnimi body prave krajnice
-                if (indexShort > 0 && (i < (indexShort - 1) || i > (indexShort))) {
-                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
-                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] == 1
-                            || (int) Calc.crossing(click, newEdge2, actRight)[0] == 1) {
-                        interRight = true;
-                    }
-                }
-            }
-            //vyhodnoceni pruseciku
-            if (indexShort > 0 && interRight == false) { //zadny prusecik praveho bodu se nenasel
-                buildTrack.changePoint(Track.RIGHT, click, indexShort); //prepsani noveho bodu
-            } else if (indexLong > 0 && interLeft == false) { //zadny prusecik leveho bodu se nenasel
-                buildTrack.changePoint(Track.LEFT, click, indexLong); //prepsani noveho bodu
-            } else if (interRight || interLeft) { //existuje prusecik
-                fireHint(HintLabels.CROSSING);
-            }
-            if (interLeft == false || interRight == false) {
-                //pokud se draha zmenila, prekreslim lomove body
-                Polyline bad = new Polyline(Polyline.CROSS_SET);
-                for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                    bad.addPoint(buildTrack.getTrack().left().getPoint(i));
-                }
-                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                    bad.addPoint(buildTrack.getTrack().right().getPoint(i));
-                }
-                setBadPoints(bad);
-            }
-            indexLong = 0;
-            indexShort = 0;
-            setStage(EDIT_PRESS);
-        }
-    }
-
-    /**
-     * It prepares game for start - track is correctly drawn. When it is single
-     * mode, track is analyzed for computer turns.
-     *
-     * @param playerCount is number of players
-     */
-    public void prepareGame(int playerCount) {
-        if (playerCount == 1) { //single mode
-            computer.setTrackIndex(0);
-            checkLines = buildTrack.getTrack().analyzeTrack();
-        }
-        reset("player");
-        setPoints(turn.startPosition(buildTrack.getTrack().getStart()));
-        buildTrack.getTrack().setLeftWidth(3);
-        buildTrack.getTrack().setRightWidth(3);
-
-        setStage(FIRST_TURN);
-        player = playerCount;
-        turn.setID(1, 2);   //it says which formula is on turn and which is second
-        firePropertyChange("startGame", 0, turn.getActID()); // cought by Draw and TrackMenu
-    }
-
-    /**
-     * Method for switching start and finish. It doesn't draw new start
-     * positions. It deletes and restarts variables so game will be ready to
-     * start.
-     */
-    public void switchStart() {
-        reset("player");
-        setStage(BUILD_LEFT);
-        getBuilder().getTrack().switchStart();
-        repaintScene();
-    }
-
-    public void loadSelectedTrack() {
-        //cought by TracksComponent
-        firePropertyChange("loadTrack", false, true);
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {

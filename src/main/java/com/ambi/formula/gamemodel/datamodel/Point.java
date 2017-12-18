@@ -9,22 +9,24 @@ package com.ambi.formula.gamemodel.datamodel;
  */
 public class Point {
 
-    public final static String LEFT = "leftCol", RIGHT = "rightCol";
-    public final static String FINISH_LINE = "finishLine", FINISH = "finish", NORMAL = "normal";
+    public final static String COLLISION_LEFT = "leftCol";
+    public final static String COLLISION_RIGHT = "rightCol";
+    public final static String FINISH_LINE = "finishLine";
+    public final static String FINISH = "finish";
+    public final static String NORMAL = "normal";
+
     private String position;
     public double x, y;
 
     // =========== constructors ================
     public Point() {
-        x = 0;
-        y = 0;
-        position = "normal";
+        this(0, 0);
     }
 
     public Point(double x, double y) {
         this.x = x;
         this.y = y;
-        position = "normal";
+        position = NORMAL;
     }
 
     public Point(Point p) {
@@ -40,6 +42,21 @@ public class Point {
 
     public int getY() {
         return (int) Math.round(y);
+    }
+
+    /**
+     * It converts panel coordinates into grid coordinates.
+     * <br>Examples of conversions when grid size is 10:
+     * <br>Point[145;53] is converted into Point[15;5]
+     * <br>Point[154;47] is converted into Point[15;5]
+     *
+     * @param gridSize is the size of the grid
+     */
+    public void toGridUnits(int gridSize) {
+        double roundX = Math.round(x / gridSize) * gridSize;
+        double roundY = Math.round(y / gridSize) * gridSize;
+        x = Math.round(roundX / gridSize);
+        y = Math.round(roundY / gridSize);
     }
 
     /**

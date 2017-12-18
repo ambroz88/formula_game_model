@@ -3,6 +3,7 @@ package com.ambi.formula.gamemodel.utils;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ambi.formula.gamemodel.TrackBuilder;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
@@ -14,6 +15,10 @@ import com.ambi.formula.gamemodel.datamodel.Track;
  * @author Jiri Ambroz
  */
 public abstract class Calc {
+
+    public static final int OUTSIDE = -1;
+    public static final int EDGE = 0;
+    public static final int INSIDE = 1;
 
     /**
      * This method finds out if two segments have intersect. One segment is
@@ -30,39 +35,7 @@ public abstract class Calc {
     public static Object[] crossing(Point a, Point b, Polyline edge) {
         Point c = edge.getPreLast();
         Point d = edge.getLast();
-        int intersect = -1;
-        Point colPoint = new Point();
-        double ax = a.x;
-        double bx = b.x;
-        double cx = c.x;
-        double dx = d.x;
-        double ay = a.y;
-        double by = b.y;
-        double cy = c.y;
-        double dy = d.y;
-        //t,u vychazi z parametrickeho vyjadreni primky
-        double t = (ax * dy - ax * cy - cx * dy - dx * ay + dx * cy + cx * ay)
-                / ((dx - cx) * (by - ay) - (bx - ax) * (dy - cy));
-        //double u = (ay-cy+(by-ay)*t) / (dy-cy);
-
-        if (Double.isInfinite(t) == false) { //kd.yz usecky nejsou rovnobezne
-            // souradnice potencialniho pruseciku
-            double X = a.x + (b.x - a.x) * t;
-            double Y = a.y + (b.y - a.y) * t;
-            colPoint = new Point(X, Y); //cannot be rounded!!!
-            //usecky se protinaji uvnitr
-            if (pointPosition(a, b, colPoint) == 1 && pointPosition(c, d, colPoint) == 1) {
-                intersect = 1;
-            } //usecky se spolecne dotykaji v jednom konci
-            else if (pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 0) {
-                intersect = 0;
-            } //konec jedne usecky se dotyka vnitrku druhe usecky
-            else if ((pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 1)
-                    || (pointPosition(c, d, colPoint) == 0 && pointPosition(a, b, colPoint) == 1)) {
-                intersect = 0;
-            }
-        }
-        return new Object[]{intersect, colPoint};
+        return crossing(a, b, c, d);
     }
 
     /**
@@ -79,36 +52,28 @@ public abstract class Calc {
      * Second value in List is Point where is the intersect.
      */
     public static Object[] crossing(Point a, Point b, Point c, Point d) {
-        int intersect = -1;
+        int intersect = OUTSIDE;
         Point colPoint = new Point();
-        double ax = a.x;
-        double bx = b.x;
-        double cx = c.x;
-        double dx = d.x;
-        double ay = a.y;
-        double by = b.y;
-        double cy = c.y;
-        double dy = d.y;
-        //t,u vychazi z parametrickeho vyjadreni primky
-        double t = (ax * dy - ax * cy - cx * dy - dx * ay + dx * cy + cx * ay)
-                / ((dx - cx) * (by - ay) - (bx - ax) * (dy - cy));
-        //double u = (a.y-c.y+(b.y-a.y)*t) / (d.y-c.y);
 
-        if (Double.isInfinite(t) == false) { //kd.yz usecky nejsou rovnobezne
+        //t vychazi z parametrickeho vyjadreni primky
+        double t = (a.x * d.y - a.x * c.y - c.x * d.y - d.x * a.y + d.x * c.y + c.x * a.y)
+                / ((d.x - c.x) * (b.y - a.y) - (b.x - a.x) * (d.y - c.y));
+
+        if (!Double.isInfinite(t)) { //kdyz usecky nejsou rovnobezne
             // souradnice potencialniho pruseciku
             double X = a.x + (b.x - a.x) * t;
             double Y = a.y + (b.y - a.y) * t;
-            colPoint = new Point((int) X, (int) Y);
+            colPoint = new Point(X, Y); //cannot be rounded!!!
             //usecky se protinaji uvnitr
             if (pointPosition(a, b, colPoint) == 1 && pointPosition(c, d, colPoint) == 1) {
-                intersect = 1;
+                intersect = INSIDE;
             } //usecky se spolecne dotykaji v jednom konci
             else if (pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 0) {
-                intersect = 0;
+                intersect = EDGE;
             } //konec jedne usecky se dotyka vnitrku druhe usecky
             else if ((pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 1)
                     || (pointPosition(c, d, colPoint) == 0 && pointPosition(a, b, colPoint) == 1)) {
-                intersect = 0;
+                intersect = EDGE;
             }
         }
         return new Object[]{intersect, colPoint};
@@ -127,16 +92,13 @@ public abstract class Calc {
         double ix = inter.x;
         double iy = inter.y;
 
-        //prusecik inter lezi na kraji usecky
         if (inter.isEqual(a) || inter.isEqual(b)) {
-            return 0;
-        }//prusecik inter lezi uvnitr usecky
-        else if ((ix >= a.x && ix <= b.x || ix <= a.x && ix >= b.x)
+            return EDGE;
+        } else if ((ix >= a.x && ix <= b.x || ix <= a.x && ix >= b.x)
                 && (iy >= a.y && iy <= b.y || iy <= a.y && iy >= b.y)) {
-            return 1;
-        }//prusecik inter lezi mimo usecku
-        else {
-            return -1;
+            return INSIDE;
+        } else {
+            return OUTSIDE;
         }
     }
 
@@ -151,7 +113,7 @@ public abstract class Calc {
     public static List<Object> findNearest(Point last, Polyline data) {
         int minIndex = 0;
         for (int i = 1; i < data.getLength(); i++) {
-            if (dist(last, data.getPoint(minIndex)) > dist(last, data.getPoint(i))) {
+            if (distance(last, data.getPoint(minIndex)) > distance(last, data.getPoint(i))) {
                 minIndex = i;
             }
         }
@@ -252,28 +214,14 @@ public abstract class Calc {
     }
 
     /**
-     * This method calculates the distance in squares between two points.
-     *
-     * @param p1 is first point
-     * @param p2 is second point
-     * @return distance between point p1 and p2 in 2 decimal numbers
-     */
-    public static double dist(Point p1, Point p2) {
-        double dist = Math.sqrt(Math.pow(p2.x - p1.x, 2)
-                + Math.pow(p2.y - p1.y, 2));
-        return Math.round(dist * 100.0) / 100.0;
-    }
-
-    /**
-     * This method calculates the distance in pixels between two points.
+     * This method calculates the distance between two points.
      *
      * @param p1 is first point
      * @param p2 is second point
      * @return distance between point p1 and p2 in 2 decimal numbers
      */
     public static double distance(Point p1, Point p2) {
-        double dist = Math.sqrt(Math.pow(p2.x - p1.x, 2)
-                + Math.pow(p2.y - p1.y, 2));
+        double dist = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
         return Math.round(dist * 100.0) / 100.0;
     }
 
@@ -317,26 +265,26 @@ public abstract class Calc {
         double uy = second.y - first.y;
 
         if (ux == 0 && uy < 0) {
-            quad = 1;
+            quad = TrackBuilder.NORTH;
         } else if (ux > 0 && uy < 0) {
-            quad = 2;
+            quad = TrackBuilder.NORTH_EAST;
         } else if (ux > 0 && uy == 0) {
-            quad = 3;
+            quad = TrackBuilder.EAST;
         } else if (ux > 0 && uy > 0) {
-            quad = 4;
+            quad = TrackBuilder.SOUTH_EAST;
         } else if (ux == 0 && uy > 0) {
-            quad = 5;
+            quad = TrackBuilder.SOUTH;
         } else if (ux < 0 && uy > 0) {
-            quad = 6;
+            quad = TrackBuilder.SOUTH_WEST;
         } else if (ux < 0 && uy == 0) {
-            quad = 7;
+            quad = TrackBuilder.WEST;
         } else if (ux < 0 && uy < 0) {
-            quad = 8;
+            quad = TrackBuilder.NORTH_WEST;
         }
         return quad;
     }
 
-    public static Point rightAngle(Polyline edge, int side_) {
+    public static Point rightAngle(Polyline edge, int side) {
         //kolmice z posledniho bodu vstupni usecky:
         Point start = edge.getLast();//z tohoto bodu bude spustena kolmice
         //smerovy vektor pro vychozi hranu na delsi strane:
@@ -345,15 +293,14 @@ public abstract class Calc {
         double nx = -uy;
         double ny = ux;
         double t = 1000;
-        if (side_ == Track.LEFT) {
+        if (side == Track.LEFT) {
             nx = uy;
             ny = -ux;
         }
         // souradnice potencialniho pruseciku:
         double X = (start.x + nx * t);
         double Y = (start.y + ny * t);
-        Point end = new Point((int) X, (int) Y);
-        return end;
+        return new Point((int) X, (int) Y);
     }
 
     /**

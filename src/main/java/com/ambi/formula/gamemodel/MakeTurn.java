@@ -110,7 +110,8 @@ public class MakeTurn {
                         act.addPoint(colPoints.getPoint(i));
                         act.lengthUp();
                         if (getFinishType() == COLLISION) {//konec hry po kolizi
-                            model.decision();
+                            racers.get(rivalID).setWin(true);
+                            model.winnerAnnoucment();
                         } else {
                             // pokud hrac 2 take boural, zjisti se kdo vyjede driv
                             waitTurn(act, "bothCrash");//prida novy stred a prida ujetou vzdalenost
@@ -135,7 +136,8 @@ public class MakeTurn {
                 //moznosti tahu:
                 model.setStage(GameModel.NORMAL_TURN);
                 if (getFinishType() == COLLISION) {//konec hry po kolizi
-                    model.decision();
+                    racers.get(rivalID).setWin(true);
+                    model.winnerAnnoucment();
                 } else {
                     // pokud hrac 2 take boural, zjisti se kdo vyjede driv
 //                    model.setStage(6);
@@ -147,15 +149,14 @@ public class MakeTurn {
                 //vsechny dobre tahy nejsou videt - projeti startem:
                 List<Object> colision = Calc.findNearest(act.getLast(), model.getTurns().getPoints());//najde nejkratsi tah
                 act.addPoint((Point) colision.get(1));
-                act.setWin(true);
                 act.lengthUp(interPoints.getPoint((int) colision.get(0)), act.getPreLast());
                 act.movesUp();
+                act.setWin(true);
                 if (getActID() == 1) {//pokud hraje prvni hrac, da jeste sanci souperi na posledni tah
                     model.setStage(GameModel.NORMAL_TURN);
                     waitTurn(act, "interFinish");
-                } else {//cilem projede druhy hrac a je automaticky konec hry
-                    model.decision();
                 }
+                model.checkWinner();
                 break;
             }
             default:
@@ -227,42 +228,31 @@ public class MakeTurn {
         }
     }
 
+    /**
+     * Metoda najde novy stred po havarii a vykresli nove moznosti novy stred je
+     * prunikem kolmice kolizni hrany a kruznice se stredem v miste kolize a
+     * polomerem 0.6*velikost mrizky, pricemz bod musi lezet na trati colision
+     * je bod, ve kterem doslo k vyjeti z trati.
+     */
     private void crashTurn() {
-        /* metoda najde novy stred po havarii a vykresli nove moznosti
-         * novy stred je prunikem kolmice kolizni hrany a kruznice se stredem v
-         * miste kolize a polomerem 0.6*velikost mrizky, pricemz bod musi lezet na trati
-         * colision je bod, ve kterem doslo k vyjeti z trati
-         */
         Formula act = racers.get(actID);
-        Point crashCenter = new Point();//novy stred po vyjeti po narazu
-        Polyline colLine = act.getColision();//usecka, ve ktere doslo k vyjeti z trati
+        Point crashCenter = new Point();
+        Polyline collisionLine = act.getColision();
 
         //smerovy vektor kolizni usecky, ktery se vyuzije pro urceni kolmice
-        double ux = colLine.getLast().x - colLine.getPreLast().x;
-        double uy = colLine.getLast().y - colLine.getPreLast().y;
-        //naraz do leve vertikalni hrany - nema reseni pro kvadratickou rovnici:
-        int X, Y;
-        if (ux == 0 && "leftCol".equals(act.getLast().getPosition())) {
-            if (uy > 0) {
-                X = act.getLast().getX() - 1;
-                Y = act.getLast().getY();
-                crashCenter = model.snapping(new Point(X, Y));
+        double ux = collisionLine.getLast().x - collisionLine.getPreLast().x;
+        double uy = collisionLine.getLast().y - collisionLine.getPreLast().y;
+
+        if (ux == 0) {
+
+            //crash into vertical edge - for quadratic equation bellow it has no solution
+            if (Point.COLLISION_LEFT.equals(act.getLast().getPosition()) && uy > 0
+                    || Point.COLLISION_RIGHT.equals(act.getLast().getPosition()) && uy < 0) {
+                crashCenter = new Point(act.getLast().getX() - 1, act.getLast().getY());
             } else {
-                X = act.getLast().getX() + 1;
-                Y = act.getLast().getY();
-                crashCenter = model.snapping(new Point(X, Y));
+                crashCenter = new Point(act.getLast().getX() + 1, act.getLast().getY());
             }
-        } //naraz do prave vertikalni hrany - nema reseni pro kvadratickou rovnici:
-        else if (ux == 0 && "rightCol".equals(act.getLast().getPosition())) {
-            if (uy > 0) {
-                X = act.getLast().getX() + 1;
-                Y = act.getLast().getY();
-                crashCenter = model.snapping(new Point(X, Y));
-            } else {
-                X = act.getLast().getX() - 1;
-                Y = act.getLast().getY();
-                crashCenter = model.snapping(new Point(X, Y));
-            }
+
         } else {
             //parametr c pro kolmici na kolizni usecku, prochazejici prusecikem:
             double C = -ux * act.getLast().x - uy * act.getLast().y;
@@ -288,7 +278,7 @@ public class MakeTurn {
             Point inter1 = new Point(X1, Y1);
             Point inter2 = new Point(X2, Y2);
             switch (act.getLast().getPosition()) {
-                case "leftCol":
+                case Point.COLLISION_LEFT:
                     //novy stred musi byt vpravo od kolizni usecky
                     if (Track.RIGHT == Calc.sidePosition(inter1, act.getColision())) {
                         crashCenter = new Point(inter1.getX(), inter1.getY());
@@ -296,7 +286,7 @@ public class MakeTurn {
                         crashCenter = new Point(inter2.getX(), inter2.getY());
                     }
                     break;
-                case "rightCol":
+                case Point.COLLISION_RIGHT:
                     //novy stred musi byt vlevo od kolizni usecky
                     if (Track.LEFT == Calc.sidePosition(inter1, act.getColision())) {
                         crashCenter = new Point(inter1.getX(), inter1.getY());
@@ -335,7 +325,7 @@ public class MakeTurn {
                 switch (task) {
                     case "interFinish": //hrac na tahu projel cilem a jelikoz souper stoji, je konec hry
 //                    racers.put(actID, act);
-                        model.decision();
+                        model.winnerAnnoucment();
                         break;
                     case "bothCrash"://hrac na tahu take boural
                         rival.setWait(rival.getWait() - 1);
@@ -450,11 +440,11 @@ public class MakeTurn {
                 for (int k = 0; k < left.getLength() - 1; k++) {
                     Polyline actLeft = new Polyline(left.getPoint(k), left.getPoint(k + 1));
                     Object[] cross = Calc.crossing(act.getLast(), actPoint, actLeft);
-                    if ((int) cross[0] != -1) {
+                    if ((int) cross[0] != Calc.OUTSIDE) {
                         //novy bod ma prunik nebo se dotyka leve krajnice
                         colLine = actLeft;
                         Point colPoint = (Point) cross[1];
-                        colPoint.setPosition(Point.LEFT);
+                        colPoint.setPosition(Point.COLLISION_LEFT);
                         colPoints.addPoint(colPoint);
                         colision = true;
                         break;
@@ -465,11 +455,11 @@ public class MakeTurn {
                     for (int k = 0; k < right.getLength() - 1; k++) {
                         Polyline actRight = new Polyline(right.getPoint(k), right.getPoint(k + 1));
                         Object[] cross = Calc.crossing(act.getLast(), actPoint, actRight);
-                        if ((int) cross[0] != -1) {
+                        if ((int) cross[0] != Calc.OUTSIDE) {
                             //novy bod ma prunik nebo se dotyka prave krajnice
                             colLine = actRight;
                             Point colPoint = (Point) cross[1];
-                            colPoint.setPosition(Point.RIGHT);
+                            colPoint.setPosition(Point.COLLISION_RIGHT);
                             colPoints.addPoint(colPoint);
                             colision = true;
                             break;
@@ -479,20 +469,20 @@ public class MakeTurn {
                 if (colision == false) { //tah nekrizi zadnou krajnici
                     Object[] start = Calc.crossing(act.getLast(), actPoint, track.getStart());
                     Object[] finish = Calc.crossing(act.getLast(), actPoint, track.getFinish());
-                    if ((int) start[0] != -1 && Track.RIGHT == Calc.sidePosition(actPoint, track.getStart())) {
+                    if ((int) start[0] != Calc.OUTSIDE && Track.RIGHT == Calc.sidePosition(actPoint, track.getStart())) {
                         //tah protina start a konci vpravo od nej (projel se v protismeru)
                         colLine = track.getStart();
                         Point colPoint = (Point) start[1];
-                        colPoint.setPosition(Point.RIGHT);
+                        colPoint.setPosition(Point.COLLISION_RIGHT);
                         colPoints.addPoint(colPoint);
                         colision = true;
                     }//tah protina cilovou caru:
-                    else if ((int) finish[0] == 1) {
+                    else if ((int) finish[0] == Calc.INSIDE) {
                         interPoints.addPoint((Point) finish[1]);
                         actPoint.setPosition(Point.FINISH);
                         System.out.println("new interPoint - through finish");
                     }//tah se dotyka cilove cary:
-                    else if ((int) finish[0] == 0) {
+                    else if ((int) finish[0] == Calc.EDGE) {
                         interPoints.addPoint((Point) finish[1]);
                         actPoint.setPosition(Point.FINISH_LINE);
                         System.out.println("new interPoint - in finish line");
@@ -500,8 +490,8 @@ public class MakeTurn {
                 } else { //tah vede mimo trat
                     //kontrola zda hrac pred narazem projede cilem:
                     Object[] finish = Calc.crossing(act.getLast(), actPoint, track.getFinish());
-                    if ((int) finish[0] != -1 && Calc.dist(act.getLast(), (Point) finish[1])
-                            < Calc.dist(act.getLast(), (Point) finish[1])) {
+                    if ((int) finish[0] != Calc.OUTSIDE && Calc.distance(act.getLast(), (Point) finish[1])
+                            < Calc.distance(act.getLast(), (Point) finish[1])) {
                         //hrac protne cil pred narazem
                         interPoints.addPoint((Point) finish[1]);
                         System.out.println("new interPoint - in crashed after finish line");

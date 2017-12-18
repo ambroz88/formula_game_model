@@ -62,7 +62,7 @@ public class Paper {
      * @return true if point is inside, false otherwise
      */
     public boolean isOutside(Point click) {
-        return click.x > dim.width || click.y > dim.height;
+        return click.x > dim.width || click.y > dim.height || click.x < 0 || click.y < 0;
     }
 
     public Polyline getHorizontalLines() {

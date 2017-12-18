@@ -46,11 +46,11 @@ public class CompSimul {
             for (int i = 0; i < pointCount; i++) {
                 Point actPoint = model.getTurns().getPoints().getPoint(i);
                 //timto tahem protne pocitac cil:
-                if (actPoint.getPosition().equals("finish")) {
+                if (actPoint.getPosition().equals(Point.FINISH)) {
                     farestPoint = actPoint;
                     break;
                 } //timto tahem pocitac skonci na cilove care:
-                else if (actPoint.getPosition().equals("finishLine")) {
+                else if (actPoint.getPosition().equals(Point.FINISH_LINE)) {
                     finishDist = 0;//uprednostneni tohoto tahu pred tim, ktery by skoncil pred cilem
                     farestPoint = actPoint;
                 } //bezny tah pocitace nekde na trati:
@@ -60,7 +60,7 @@ public class CompSimul {
                     int k = 1;
                     int basic = 20;
                     while (search == true) {
-                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(trackIndex + k))[0] != -1) {
+                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(trackIndex + k))[0] != Calc.OUTSIDE) {
                             k++;
                             basic = basic + 20;
                         } else {
@@ -80,7 +80,7 @@ public class CompSimul {
                             if (basic - dist[2] > maxDist) {
                                 maxDist = basic - dist[2];
                                 farestPoint = actPoint;
-                                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + k - 1))[0] != -1) {
+                                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + k - 1))[0] != Calc.OUTSIDE) {
                                     newIndex = trackIndex + k - 1;
                                 }
                             }
@@ -101,7 +101,7 @@ public class CompSimul {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
                 System.out.println("zadna moznost nevyhovuje");
                 farestPoint = (Point) Calc.findNearest(f2.getLast(), model.getTurns().getPoints()).get(1);
-                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + 1))[0] != -1) {
+                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + 1))[0] != Calc.OUTSIDE) {
                     newIndex = trackIndex + 1;
                 }
             }
@@ -144,13 +144,13 @@ public class CompSimul {
         intersect = false;
         //kontrola srazky s levou hranou:
         if (prev.getPreLast().isEqual(next.getPreLast()) == false) {
-            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getPreLast(), next.getPreLast())[0] != -1) {
+            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getPreLast(), next.getPreLast())[0] != Calc.OUTSIDE) {
                 intersect = true;
             }
         }
         //kontrola srazky s pravou hranou:
         if (intersect == false && prev.getLast().isEqual(next.getLast()) == false) {
-            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getLast(), next.getLast())[0] != -1) {
+            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getLast(), next.getLast())[0] != Calc.OUTSIDE) {
                 intersect = true;
             }
         }
@@ -192,9 +192,9 @@ public class CompSimul {
         Point midPoint = new Polyline(mid1, mid2).getMidPoint();
         //prevladajici smer jizdy (side - smer X nebo speed - smer Y):
         String direct = f2.maxDirect(click);
-        double midDist = Calc.dist(midPoint, click);
+        double midDist = Calc.distance(midPoint, click);
         //formule je rychlejsi ve vertikalnim smeru - osa Y
-        if (direct.equals("speed")) {
+        if (direct.equals(Formula.FORWARD)) {
             double dist1 = Math.floor(Math.abs((click.getY() - mid1.getY())));
             double dist2 = Math.floor(Math.abs((click.getY() - mid2.getY())));
             //kontrola, zda stred blizsi linie neni v protismeru:

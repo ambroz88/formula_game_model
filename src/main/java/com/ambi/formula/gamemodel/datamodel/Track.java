@@ -312,7 +312,7 @@ public class Track {
                 Point opPoint2 = shortSide.getPoint(i + 1);
                 Object[] cross = Calc.crossing(start, end, opPoint1, opPoint2);
 
-                if ((int) cross[0] == 1) {
+                if ((int) cross[0] == Calc.INSIDE) {
                     if (Calc.distance(opPoint1, (Point) cross[1]) <= Calc.distance(opPoint2, (Point) cross[1])) {
                         actIndex = i;
                     } else {
@@ -320,7 +320,7 @@ public class Track {
                     }
                     intersect = true;
                     break;
-                } else if ((int) cross[0] == 0) {
+                } else if ((int) cross[0] == Calc.EDGE) {
                     actIndex = i + 1;
                     intersect = true;
                     break;
