@@ -7,6 +7,7 @@ import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.utils.Calc;
+import com.ambi.formula.gamemodel.utils.TrackUtils;
 
 /**
  * This class is used when the user builds the track. Basically there is tested
@@ -15,24 +16,13 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class TrackBuilder {
-
-    public static final int NORTH = 1;
-    public static final int NORTH_EAST = 2;
-    public static final int EAST = 3;
-    public static final int SOUTH_EAST = 4;
-    public static final int SOUTH = 5;
-    public static final int SOUTH_WEST = 6;
-    public static final int WEST = 7;
-    public static final int NORTH_WEST = 8;
+public class TrackBuilder extends TrackValidator {
 
     private final GameModel model;
-    private Track track;
     private int side, oppSide;
 
-    public TrackBuilder(GameModel menu) {
-        this.model = menu;
-        this.track = new Track(this.model);
+    public TrackBuilder(GameModel gModel) {
+        this.model = gModel;
     }
 
     /**
@@ -45,31 +35,31 @@ public class TrackBuilder {
      * @param newSide is side which is build.
      */
     public void buildTrack(Point click, int newSide) {
-        Polyline points = new Polyline(model.getPoints());
+        Polyline points = new Polyline(getModel().getPoints());
         this.side = newSide;
         if (Track.LEFT == side) {
             oppSide = Track.RIGHT;
         } else {
             oppSide = Track.LEFT;
         }
-        Polyline actLine = track.getLine(side);
-        Polyline oppLine = track.getLine(oppSide);
+        Polyline actLine = getLine(side);
+        Polyline oppLine = getLine(oppSide);
         //OPPOSITE SIDE WAS ALLREADY STARTED
         if (oppLine.getLength() > 0) {
             //builded side is still empty and user clicked on one of the start points
             if (actLine.getLength() == 0 && points.isInside(click)) {
                 points = drawFinishTurns();
                 points.addPoint(click);//in point of click there will be drawn a point
-                track.addPoint(side, click);
-                model.setPoints(points);
+                addPoint(side, click);
+                getModel().setPoints(points);
                 //first point of parallel side is identical
-                track.addParallelPoint(0, side, click);
+                addParallelPoint(0, side, click);
             } //builded side is still empty but user clicked out of the start points
             else if (actLine.getLength() == 0) {
-                model.fireHint(HintLabels.WRONG_START);
+                getModel().fireHint(HintLabels.WRONG_START);
             } //point click is good and IT IS POSSIBLE TO ADD IT to the track
             else if (actLine.getLast().isEqual(click) == false && buildSecondSide(click)) {
-                track.addPoint(side, click);
+                addPoint(side, click);
                 isTrackReady(click);
             }
         } //OPPOSITE SIDE WASN'T STILL STARTED
@@ -78,19 +68,19 @@ public class TrackBuilder {
             if (actLine.getLength() <= 1) {
                 if (actLine.getLength() == 0) {
                     points.addPoint(click); //first point in side is drawn
-                    model.setPoints(points);
+                    getModel().setPoints(points);
                 }
-                track.addPoint(side, click);
+                addPoint(side, click);
             } //point click is not identical with the last point in builded side
             else if (!actLine.getLast().isEqual(click)) {
                 //new edge of builded side don't cross any other edge
                 if (!checkOwnCross(actLine, click)) {
                     if (correctDirection(actLine, click)) {
-                        track.addPoint(side, click);
+                        addPoint(side, click);
                     }
                 }
             } else {
-                model.fireHint(HintLabels.IDENTICAL_POINTS);
+                getModel().fireHint(HintLabels.IDENTICAL_POINTS);
             }
         }
     }
@@ -110,7 +100,7 @@ public class TrackBuilder {
             if (Calc.sidePosition(click, lastSegment) == oppSide
                     && Calc.distance(actLine.getPreLast(), actLine.getLast())
                     >= Calc.distance(actLine.getPreLast(), Calc.baseOfAltitude(lastSegment, click))) {
-                model.fireHint(HintLabels.FORWARD);
+                getModel().fireHint(HintLabels.FORWARD);
                 return false;
             }
         }
@@ -118,11 +108,11 @@ public class TrackBuilder {
     }
 
     private void isTrackReady(Point click) {
-        boolean ready = track.getReady() && model.getPoints().isInside(click);
+        boolean ready = getReady() && getModel().getPoints().isInside(click);
         if (ready) {
-            track.finishIndexes();
+            finishIndexes();
         }
-        model.fireTrackReady(ready);
+        getModel().fireTrackReady(ready);
     }
 
     /**
@@ -132,12 +122,12 @@ public class TrackBuilder {
      * @return points as polyline
      */
     private Polyline drawFinishTurns() {
-        Polyline oppLine = track.getLine(oppSide);
+        Polyline oppLine = getLine(oppSide);
         Point start = oppLine.getPreLast();
         Point finish = oppLine.getLast();
 
-        int quad = Calc.findQuad(start, finish);
-        return generatePossibilities(quad, finish);
+        int quad = TrackUtils.findQuad(start, finish);
+        return TrackUtils.generateGoalPoints(quad, finish, side);
     }
 
     /**
@@ -148,81 +138,12 @@ public class TrackBuilder {
      * @return points as polyline
      */
     private Polyline drawStartTurns() {
-        Polyline oppLine = track.getLine(oppSide);
+        Polyline oppLine = getLine(oppSide);
         Point start = oppLine.getPoint(0);
         Point finish = oppLine.getPoint(1);
 
-        int quad = Calc.findQuad(start, finish);
-        return generatePossibilities(quad, start);
-    }
-
-    /**
-     * It calculates 5 points which lies horizontaly and verticaly from central
-     * point. Direction is based on octant which says if segment went to "north
-     * east", "south west" or "south" etc.
-     *
-     * @param octant determines direction of the segment
-     * @param centralPoint is point from which the calculations start
-     * @return points as a polyline
-     */
-    private Polyline generatePossibilities(int octant, Point centralPoint) {
-        int sideKoef;
-        if (side == Track.RIGHT) {
-            //for right side it is necessary to subtract coordinates
-            sideKoef = -1;
-        } else {
-            sideKoef = 1;
-        }
-
-        // NALEZENI KVADRANTU, KAM SMERUJE ZVOLENA USECKA
-        Polyline points = new Polyline(Polyline.GOOD_SET);
-        switch (octant) {
-            case NORTH:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x - sideKoef * i, centralPoint.y));
-                }
-                break;
-            case NORTH_EAST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x - sideKoef * i, centralPoint.y));
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y - sideKoef * i));
-                }
-                break;
-            case EAST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y - sideKoef * i));
-                }
-                break;
-            case SOUTH_EAST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x + sideKoef * i, centralPoint.y));
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y - sideKoef * i));
-                }
-                break;
-            case SOUTH:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x + sideKoef * i, centralPoint.y));
-                }
-                break;
-            case SOUTH_WEST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x + sideKoef * i, centralPoint.y));
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y + sideKoef * i));
-                }
-                break;
-            case WEST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y + sideKoef * i));
-                }
-                break;
-            case NORTH_WEST:
-                for (int i = 3; i < 8; i++) {
-                    points.addPoint(new Point(centralPoint.x - sideKoef * i, centralPoint.y));
-                    points.addPoint(new Point(centralPoint.x, centralPoint.y + sideKoef * i));
-                }
-                break;
-        }
-        return points;
+        int quad = TrackUtils.findQuad(start, finish);
+        return TrackUtils.generateGoalPoints(quad, start, side);
     }
 
     /**
@@ -233,18 +154,18 @@ public class TrackBuilder {
      * @return true if <code>click</code> is possible to add
      */
     private boolean buildSecondSide(Point click) {
-        Polyline actLine = track.getLine(side);
-        Polyline oppLine = track.getLine(oppSide);
+        Polyline actLine = getLine(side);
+        Polyline oppLine = getLine(oppSide);
 
-        if ((int) Calc.crossing(actLine.getLast(), click, track.getStart())[0] == Calc.INSIDE) {
-            model.fireHint(HintLabels.THROUGH_START);
+        if ((int) Calc.crossing(actLine.getLast(), click, getStart())[0] == Calc.INSIDE) {
+            getModel().fireHint(HintLabels.THROUGH_START);
             return false;
         }
 
-        Polyline trackEnd = new Polyline(actLine.getLast(), oppLine.getPoint(track.getIndex(oppSide)));
+        Polyline trackEnd = new Polyline(actLine.getLast(), oppLine.getPoint(getIndex(oppSide)));
         // check if new side is building on right direction from the start
         if (actLine.getLength() == 1 && Calc.sidePosition(click, trackEnd) != side) {
-            model.fireHint(HintLabels.FORWARD);
+            getModel().fireHint(HintLabels.FORWARD);
             return false;
         }
 
@@ -255,7 +176,7 @@ public class TrackBuilder {
 
         // check crossing of opposite side:
         if (checkOppositeCross(oppLine, actLine.getLast(), click)) {
-            model.fireHint(HintLabels.CROSSING);
+            getModel().fireHint(HintLabels.CROSSING);
             return false;
         }
 
@@ -264,26 +185,26 @@ public class TrackBuilder {
             return false;
         }
 
-        if (track.freeDrawing(side, oppSide)) {
+        if (freeDrawing(side, oppSide)) {
             return true;
         }
 
         //check if side is inside of opposite parallel side
         if (actLine.getLength() == 1) {
-            Polyline segment = new Polyline(track.getParallelLine(side).getPoint(0), track.getParallelLine(side).getPoint(1));
+            Polyline segment = new Polyline(getParallelLine(side).getPoint(0), getParallelLine(side).getPoint(1));
             if (Calc.sidePosition(click, segment) == side) {
-                model.fireHint(HintLabels.FORWARD);
+                getModel().fireHint(HintLabels.FORWARD);
                 return false;
             }
-        } else if (checkOppositeCross(track.getParallelLine(side), actLine.getLast(), click)) {
-            model.fireHint(HintLabels.FORWARD);
+        } else if (checkOppositeCross(getParallelLine(side), actLine.getLast(), click)) {
+            getModel().fireHint(HintLabels.FORWARD);
             return false;
         }
 
         //turn is OK but it is necessary to check "building index" on opposite side
         boolean search = true;
         Point prev, center, next, sidePoint;
-        int index = track.getIndex(oppSide);
+        int index = getIndex(oppSide);
         while (search) {
             if (index < oppLine.getLength() - 2) {
                 //create next segment that should be crossed by point click:
@@ -294,7 +215,7 @@ public class TrackBuilder {
 
                 if ((int) Calc.crossing(actLine.getLast(), click, center, sidePoint)[0] >= Calc.EDGE) {
                     //point click went through "control segment"
-                    track.setIndex(index + 1, oppSide);
+                    setIndex(index + 1, oppSide);
                 }
             } else if (index == oppLine.getLength() - 2) {
                 prev = oppLine.getPoint(index - 1);
@@ -304,14 +225,14 @@ public class TrackBuilder {
 
                 if ((int) Calc.crossing(actLine.getLast(), click, center, sidePoint)[0] >= Calc.EDGE) {
                     //point click went through "control segment"
-                    track.setIndex(index + 1, oppSide);
+                    setIndex(index + 1, oppSide);
                 }
             } else {
                 search = false;
             }
             index++;
         }
-        track.setIndex(actLine.getLength(), side);
+        setIndex(actLine.getLength(), side);
         return true;
     }
 
@@ -330,7 +251,7 @@ public class TrackBuilder {
             for (int i = 0; i < line.getLength() - 2; i++) {
                 //kontrola mozne kolize usecek:
                 if ((int) Calc.crossing(last, click, line.getPoint(i), line.getPoint(i + 1))[0] != Calc.OUTSIDE) {
-                    model.fireHint(HintLabels.CROSSING);
+                    getModel().fireHint(HintLabels.CROSSING);
                     return true;
                 }
             }
@@ -365,11 +286,11 @@ public class TrackBuilder {
      * constuction. It is not allowed to cross this polyline.
      */
     private void createBounds() {
-        Polyline oppLine = track.getLine(oppSide);
+        Polyline oppLine = getLine(oppSide);
         if (oppLine.getLength() > 2) {
-            track.getParallelLine(side).clear();
-            if (track.getLine(side).getLength() > 0) {
-                track.addParallelPoint(side, track.getLine(side).getPoint(0));
+            getParallelLine(side).clear();
+            if (getLine(side).getLength() > 0) {
+                addParallelPoint(side, getLine(side).getPoint(0));
             }
             for (int i = 1; i < oppLine.getLength() - 1; i++) {
                 //create point on the other parallel side
@@ -379,12 +300,12 @@ public class TrackBuilder {
                 Point sidePoint = Calc.calculateAngle(prev, center, next, side);
 
                 if (sidePoint != null) {
-                    track.addParallelPoint(side, sidePoint);
-                    if (track.getParallelLine(side).getLength() > 3) {
+                    addParallelPoint(side, sidePoint);
+                    if (getParallelLine(side).getLength() > 3) {
                         if (i == oppLine.getLength() - 2) {
-                            track.addParallelPoint(side, oppLine.getLast());
+                            addParallelPoint(side, oppLine.getLast());
                             straightParallel();
-                            track.getParallelLine(side).removeLast();
+                            getParallelLine(side).removeLast();
                         } else {
                             straightParallel();
                         }
@@ -400,7 +321,7 @@ public class TrackBuilder {
      * self-intersections.
      */
     private void straightParallel() {
-        Polyline line = track.getParallelLine(side); // it has minimally 4 points
+        Polyline line = getParallelLine(side); // it has minimally 4 points
         Polyline lastSegment = new Polyline(line.getPreLast(), line.getLast());
         Object[] cross;
         //go through all segments and check collision with the last one
@@ -411,7 +332,7 @@ public class TrackBuilder {
                 Point intersect = (Point) cross[1];
                 //points between collision segments will be overwrited into collision point
                 for (int k = i + 1; k < line.getLength() - 1; k++) {
-                    track.getParallelLine(side).getPoint(k).setPoint(intersect);
+                    getParallelLine(side).getPoint(k).setPoint(intersect);
                 }
             }
         }
@@ -424,57 +345,55 @@ public class TrackBuilder {
             this.oppSide = Track.LEFT;
         }
         this.side = side;
-        track.setWidth(side);
+        setWidth(side);
         createBounds();
     }
 
-    public void changePoint(int side, Point click, int index) {
-        track.getLine(side).changePoint(click, index);
-    }
-
     private void removeLast(int side) {
-        track.removeLastPoint(side);
-        if (track.getLine(side).getLength() > 0) {
-            boolean ready = track.getReady() && model.getPoints().isInside(track.getLine(side).getLast());
+        removeLastPoint(side);
+        if (getLine(side).getLength() > 0) {
+            boolean ready = getReady() && getModel().getPoints().isInside(getLine(side).getLast());
             if (ready) {
-                model.fireTrackReady(ready);
+                getModel().fireTrackReady(ready);
             }
         }
-        model.repaintScene();
-    }
-
-    public Track getTrack() {
-        return track;
+        getModel().repaintScene();
     }
 
     public void setTrack(Track track) {
         getModel().endGame();
-        this.track = track;
+        reset();
+        setLeft(track.getLine(Track.LEFT));
+        setRight(track.getLine(Track.RIGHT));
+
+        getModel().setPaperWidth(track.getMaxWidth() + 10);
+        getModel().setPaperHeight(track.getMaxHeight() + 10);
+
         getModel().fireTrackReady(true);
         getModel().repaintScene();
     }
 
-    public GameModel getModel() {
-        return model;
-    }
-
     // ---------------- METHOD FROM TRACK MENU --------------------
     public void startBuild(int side) {
-        if (getTrack().getOppLine(side).getLength() != 1) {
-            model.repaintScene();
+        if (getOppLine(side).getLength() != 1) {
+            getModel().repaintScene();
             setSide(side);
             //vykresleni moznosti tvorby pocatecnich a koncovych bodu:
-            if (getTrack().getOppLine(side).getLength() > 1 && getTrack().getLine(side).getLength() == 0) {
-                model.setPoints(drawStartTurns());
-            } else if (getTrack().getOppLine(side).getLength() > 1 && getTrack().getLine(side).getLength() > 0) {
-                model.setPoints(drawFinishTurns());
+            if (getOppLine(side).getLength() > 1 && getLine(side).getLength() == 0) {
+                getModel().setPoints(drawStartTurns());
+            } else if (getOppLine(side).getLength() > 1 && getLine(side).getLength() > 0) {
+                getModel().setPoints(drawFinishTurns());
             }
-            model.setStage(side);
+            if (side == Track.LEFT) {
+                getModel().setStage(GameModel.BUILD_LEFT);
+            } else {
+                getModel().setStage(GameModel.BUILD_RIGHT);
+            }
         } else {
             if (side == Track.LEFT) {
-                model.fireHint(HintLabels.RIGHT_SIDE_FIRST);
+                getModel().fireHint(HintLabels.RIGHT_SIDE_FIRST);
             } else {
-                model.fireHint(HintLabels.LEFT_SIDE_FIRST);
+                getModel().fireHint(HintLabels.LEFT_SIDE_FIRST);
             }
         }
     }
@@ -484,33 +403,26 @@ public class TrackBuilder {
      * visibly marked.
      */
     public void editPoints() {
-        model.setStage(GameModel.EDIT_PRESS);
-        model.fireHint(HintLabels.MOVE_POINTS);
-        Polyline bad = new Polyline(Polyline.CROSS_SET);
-        for (int i = 1; i < getTrack().left().getLength() - 1; i++) {
-            bad.addPoint(getTrack().left().getPoint(i));
-        }
-        for (int i = 1; i < getTrack().right().getLength() - 1; i++) {
-            bad.addPoint(getTrack().right().getPoint(i));
-        }
-        model.setBadPoints(bad);
+        getModel().setStage(GameModel.EDIT_PRESS);
+        getModel().fireHint(HintLabels.MOVE_POINTS);
+        getModel().resetPoints();
     }
 
     public void deletePoint(int actSide, int oppSide) {
         if (actSide == 0) {
-            model.fireHint(HintLabels.CHOOSE_SIDE);
+            getModel().fireHint(HintLabels.CHOOSE_SIDE);
         } else {
             //mazani poslednich bodu pri tvorbe trati - podle toho, jaka se krajnice vybrana
-            int actSize = getTrack().getLine(actSide).getLength();
-            int oppSize = getTrack().getLine(oppSide).getLength();
+            int actSize = getLine(actSide).getLength();
+            int oppSize = getLine(oppSide).getLength();
 
             if (actSize > 0) {
                 removeLast(actSide);
-                track.getParallelLine(oppSide).removeLast();
-                Polyline points = model.getPoints();
+                getParallelLine(oppSide).removeLast();
+                Polyline points = getModel().getPoints();
                 //kdyz zbyde v krajnici pouze jeden bod, tak bude vykreslen
                 if (actSize == 1) {
-                    points.addPoint(getTrack().getLine(actSide).getLast());
+                    points.addPoint(getLine(actSide).getLast());
                 } //kdyz se smaze i posledni bod, smaze se take tecka znacici prvni bod
                 else if (actSize == 0) {
                     points.clear();
@@ -520,13 +432,17 @@ public class TrackBuilder {
                 } else if (oppSize > 1) {
                     points = drawFinishTurns();
                 }
-                model.setPoints(points);
+                getModel().setPoints(points);
             }
         }
     }
 
+    public GameModel getModel() {
+        return model;
+    }
+
     public void addPropertyChangeListener(PropertyChangeListener listener) {
-        model.addPropertyChangeListener(listener);
+        getModel().addPropertyChangeListener(listener);
     }
 
 }

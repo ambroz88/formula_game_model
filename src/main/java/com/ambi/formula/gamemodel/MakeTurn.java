@@ -77,7 +77,7 @@ public class MakeTurn {
                         act.movesUp();
                         //hrac protne cilovou caru:
                         if (points.getPoint(i).getPosition().contains(Point.FINISH)
-                                && Track.LEFT == Calc.sidePosition(click, model.getBuilder().getTrack().getFinish())) {
+                                && Track.LEFT == Calc.sidePosition(click, model.getBuilder().getFinish())) {
                             //nastaveni informaci o jizde:
                             System.out.println("interpoints size: " + interPoints.getLength());
                             System.out.println("index of click point: " + i);

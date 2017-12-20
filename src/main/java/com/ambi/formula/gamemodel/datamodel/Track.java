@@ -3,7 +3,6 @@ package com.ambi.formula.gamemodel.datamodel;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.utils.Calc;
 
 /**
@@ -16,20 +15,22 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class Track {
 
-    public static int LEFT = 1, RIGHT = 2, LIMIT_DIST = 15, LIMIT_NEXT = 5;
-    private final GameModel model;
+    public static int LEFT = 1, RIGHT = -1, LIMIT_DIST = 15, LIMIT_NEXT = 5;
     private Polyline left, right, parallelLeft, parallelRight;
     private int leftIndex, rightIndex, leftWidth, rightWidth;
+    private int maxWidth;
+    private int maxHeight;
     private boolean ready;
 
-    public Track(GameModel model) {
-        this.model = model;
+    public Track() {
         left = new Polyline(Polyline.POLYLINE);
         right = new Polyline(Polyline.POLYLINE);
         parallelLeft = new Polyline(Polyline.POLYLINE);
         parallelRight = new Polyline(Polyline.POLYLINE);
         leftIndex = 0;
         rightIndex = 0;
+        maxWidth = 0;
+        maxHeight = 0;
         leftWidth = 3;
         rightWidth = 3;
         ready = false;
@@ -63,6 +64,7 @@ public class Track {
         getLine(side).addPoint(point);
         setReady((leftIndex == left().getLength() - 1 && left().getLength() > 1 && rightIndex >= right().getLength() - 4)
                 || (rightIndex == right().getLength() - 1 && right().getLength() > 1 && leftIndex >= left().getLength() - 4));
+        checkMaximum(point);
     }
 
     public void addParallelPoint(int side, Point point) {
@@ -85,6 +87,16 @@ public class Track {
                 if (getIndex(LEFT) > getIndex(side)) {
                     setIndex(getIndex(LEFT) - 1, LEFT);
                 }
+            }
+        }
+        calculateDimension();
+    }
+
+    public void calculateDimension() {
+        for (int i = 0; i < getLong().getLength(); i++) {
+            checkMaximum(getLong().getPoint(i));
+            if (i < getShort().getLength()) {
+                checkMaximum(getShort().getPoint(i));
             }
         }
     }
@@ -176,6 +188,31 @@ public class Track {
             return left();
         } else {
             return right();
+        }
+    }
+
+    public int getMaxWidth() {
+        return maxWidth;
+    }
+
+    public void setMaxWidth(int maxWidth) {
+        this.maxWidth = maxWidth;
+    }
+
+    public int getMaxHeight() {
+        return maxHeight;
+    }
+
+    public void setMaxHeight(int maxHeight) {
+        this.maxHeight = maxHeight;
+    }
+
+    private void checkMaximum(Point point) {
+        if (point.x > maxWidth) {
+            maxWidth = (int) point.x;
+        }
+        if (point.y > maxHeight) {
+            maxHeight = (int) point.y;
         }
     }
 
@@ -509,10 +546,12 @@ public class Track {
         parallelRight.clear();
         leftIndex = 0;
         rightIndex = 0;
+        maxWidth = 0;
+        maxHeight = 0;
     }
 
-    public GameModel getModel() {
-        return model;
+    public Track getTrack() {
+        return this;
     }
 
     @Override

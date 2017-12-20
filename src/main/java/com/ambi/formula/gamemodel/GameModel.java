@@ -11,7 +11,6 @@ import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.labels.HintLabels;
-import com.ambi.formula.gamemodel.utils.Calc;
 import com.ambi.formula.gamemodel.utils.TrackIO;
 
 /**
@@ -48,8 +47,6 @@ public class GameModel {
 
     private int stage;
     private int player;
-    private int indexLong;
-    private int indexShort;
     private int gridSize;
 
     public GameModel() {
@@ -126,37 +123,19 @@ public class GameModel {
      * @return
      */
     public boolean isTrackEdit(Point click) {
+        boolean onTrack = false;
         if (getStage() == EDIT_PRESS) {
 
             click.toGridUnits(gridSize);
-            //pri editaci bodu se urci, ktery bod se bude hybat
-            //kontrola, zda se kliklo na bod z leve krajnice
-            for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                if (click.isEqual(buildTrack.getTrack().left().getPoint(i))) {
-                    indexLong = i;//zapamatovani si indexu meniciho se bodu na leve strane
-                    fireHint(HintLabels.EMPTY);
-                    break;
-                }
-            }
-            //kontrola, zda se kliklo na bod z prave krajnice
-            if (indexLong == 0) {
-                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                    if (click.isEqual(buildTrack.getTrack().right().getPoint(i))) {
-                        indexShort = i;//zapamatovani si indexu meniciho se bodu na prave strane
-                        fireHint(HintLabels.EMPTY);
-                        break;
-                    }
-                }
-            }
-            setStage(EDIT_RELEASE);
-            if (indexLong == 0 && indexShort == 0) {
-                //pokud se nekliklo na zadny bod, zobrazi se info
+            onTrack = buildTrack.clickOnTrack(click);
+            if (!onTrack) {
                 fireHint(HintLabels.NO_POINT);
             } else {
-                return true;
+                fireHint(HintLabels.EMPTY);
             }
+            setStage(EDIT_RELEASE);
         }
-        return false;
+        return onTrack;
     }
 
     /**
@@ -168,79 +147,10 @@ public class GameModel {
     public void windowMouseReleased(Point click) {
         if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
             click.toGridUnits(gridSize);
-            //hledani mozneho pruseciku se zbytkem krajnice
-            boolean interRight = false; //premistovany bod z prave krajnice se nekrizi
-            boolean interLeft = false; //premistovany bod z leve krajnice se nekrizi
 
-            //-------- cyklus projde vsechny USECKY LEVE KRAJNICE: -------------
-            for (int i = 0; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                Polyline actLeft = new Polyline(buildTrack.getTrack().left().getPoint(i), buildTrack.getTrack().left().getPoint(i + 1));
-                // ______ premistovany bod je z prave krajnice: ______
-                if (indexShort > 0) {
-                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
-                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] != Calc.OUTSIDE
-                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] != Calc.OUTSIDE) {
-                        interRight = true;
-                        break;
-                    }
-                }
-                //______ premistovany bod je z leve krajnice: _______
-                // nesmi se krizit ani s ostatnimi body leve krajnice
-                if (indexLong > 0 && (i < (indexLong - 1) || i > (indexLong))) {
-                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
-                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actLeft)[0] == Calc.INSIDE
-                            || (int) Calc.crossing(click, newEdge2, actLeft)[0] == Calc.INSIDE) {
-                        interLeft = true;
-                    }
-                }
-            }
-            //-------- cyklus projde vsechny USECKY PRAVE KRAJNICE: ------------
-            for (int i = 0; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                Polyline actRight = new Polyline(buildTrack.getTrack().right().getPoint(i), buildTrack.getTrack().right().getPoint(i + 1));
-                //______ premistovany bod je z leve krajnice: _______
-                if (indexLong > 0) {
-                    Point newEdge1 = buildTrack.getTrack().left().getPoint(indexLong - 1);
-                    Point newEdge2 = buildTrack.getTrack().left().getPoint(indexLong + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] != Calc.OUTSIDE
-                            || (int) Calc.crossing(click, newEdge2, actRight)[0] != Calc.OUTSIDE) {
-                        interLeft = true;
-                        break;
-                    }
-                }
-                // ______ premistovany bod je z prave krajnice: ______
-                // nesmi se krizit ani s ostatnimi body prave krajnice
-                if (indexShort > 0 && (i < (indexShort - 1) || i > (indexShort))) {
-                    Point newEdge1 = buildTrack.getTrack().right().getPoint(indexShort - 1);
-                    Point newEdge2 = buildTrack.getTrack().right().getPoint(indexShort + 1);
-                    if ((int) Calc.crossing(click, newEdge1, actRight)[0] == Calc.INSIDE
-                            || (int) Calc.crossing(click, newEdge2, actRight)[0] == Calc.INSIDE) {
-                        interRight = true;
-                    }
-                }
-            }
-            //vyhodnoceni pruseciku
-            if (indexShort > 0 && interRight == false) { //zadny prusecik praveho bodu se nenasel
-                buildTrack.changePoint(Track.RIGHT, click, indexShort); //prepsani noveho bodu
-            } else if (indexLong > 0 && interLeft == false) { //zadny prusecik leveho bodu se nenasel
-                buildTrack.changePoint(Track.LEFT, click, indexLong); //prepsani noveho bodu
-            } else if (interRight || interLeft) { //existuje prusecik
+            if (!buildTrack.isNewPointValid(click)) {
                 fireHint(HintLabels.CROSSING);
             }
-            if (interLeft == false || interRight == false) {
-                //pokud se draha zmenila, prekreslim lomove body
-                Polyline bad = new Polyline(Polyline.CROSS_SET);
-                for (int i = 1; i < buildTrack.getTrack().left().getLength() - 1; i++) {
-                    bad.addPoint(buildTrack.getTrack().left().getPoint(i));
-                }
-                for (int i = 1; i < buildTrack.getTrack().right().getLength() - 1; i++) {
-                    bad.addPoint(buildTrack.getTrack().right().getPoint(i));
-                }
-                setBadPoints(bad);
-            }
-            indexLong = 0;
-            indexShort = 0;
             setStage(EDIT_PRESS);
         }
     }
@@ -254,12 +164,12 @@ public class GameModel {
     public void prepareGame(int playerCount) {
         if (playerCount == 1) { //single mode
             computer.setTrackIndex(0);
-            checkLines = buildTrack.getTrack().analyzeTrack();
+            checkLines = buildTrack.analyzeTrack();
         }
         resetPlayers();
-        setPoints(turn.startPosition(buildTrack.getTrack().getStart()));
-        buildTrack.getTrack().setLeftWidth(3);
-        buildTrack.getTrack().setRightWidth(3);
+        setPoints(turn.startPosition(buildTrack.getStart()));
+        buildTrack.setLeftWidth(3);
+        buildTrack.setRightWidth(3);
 
         setStage(FIRST_TURN);
         player = playerCount;
@@ -275,7 +185,7 @@ public class GameModel {
      */
     public void switchStart() {
         setStage(BUILD_LEFT);
-        getBuilder().getTrack().switchStart();
+        getBuilder().switchStart();
         resetPlayers();
     }
 
@@ -299,7 +209,7 @@ public class GameModel {
      */
     public void resetGame() {
         setStage(BUILD_LEFT);
-        buildTrack.getTrack().reset();
+        buildTrack.reset();
         resetPlayers();
     }
 

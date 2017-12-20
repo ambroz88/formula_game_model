@@ -247,42 +247,6 @@ public abstract class Calc {
         return result;
     }
 
-    /**
-     * <html>This method calculetes the code of direction kvadrant of segment
-     * which is given by two points. It depends on order of the segment.
-     * Possible directions:<br>
-     * 1 = north 3 = east 5 = south 7 = west <br>
-     * 2 = northeast 4 = southeast 6 = southwest 8 = northwest
-     *
-     * @param first is first point of segment
-     * @param second is second point of segment
-     * @return code of direction (could be values from 1 to 8) </html>
-     */
-    public static int findQuad(Point first, Point second) {
-        int quad = 0;
-        //smerovy vektor vstupni usecky:
-        double ux = second.x - first.x;
-        double uy = second.y - first.y;
-
-        if (ux == 0 && uy < 0) {
-            quad = TrackBuilder.NORTH;
-        } else if (ux > 0 && uy < 0) {
-            quad = TrackBuilder.NORTH_EAST;
-        } else if (ux > 0 && uy == 0) {
-            quad = TrackBuilder.EAST;
-        } else if (ux > 0 && uy > 0) {
-            quad = TrackBuilder.SOUTH_EAST;
-        } else if (ux == 0 && uy > 0) {
-            quad = TrackBuilder.SOUTH;
-        } else if (ux < 0 && uy > 0) {
-            quad = TrackBuilder.SOUTH_WEST;
-        } else if (ux < 0 && uy == 0) {
-            quad = TrackBuilder.WEST;
-        } else if (ux < 0 && uy < 0) {
-            quad = TrackBuilder.NORTH_WEST;
-        }
-        return quad;
-    }
 
     public static Point rightAngle(Polyline edge, int side) {
         //kolmice z posledniho bodu vstupni usecky:
@@ -290,12 +254,15 @@ public abstract class Calc {
         //smerovy vektor pro vychozi hranu na delsi strane:
         double ux = edge.getPreLast().x - start.x;
         double uy = edge.getPreLast().y - start.y;
-        double nx = -uy;
-        double ny = ux;
+        double nx;
+        double ny;
         double t = 1000;
         if (side == Track.LEFT) {
             nx = uy;
             ny = -ux;
+        } else {
+            nx = -uy;
+            ny = ux;
         }
         // souradnice potencialniho pruseciku:
         double X = (start.x + nx * t);

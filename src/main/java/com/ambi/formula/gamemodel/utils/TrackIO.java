@@ -36,8 +36,8 @@ public abstract class TrackIO {
     public static void trackToJSON(Track track, String name) throws IOException {
         JSONObject obj = new JSONObject();
 
-        obj.put("width", track.getModel().getPaperWidth());
-        obj.put("height", track.getModel().getPaperHeight());
+        obj.put("width", track.getMaxWidth());
+        obj.put("height", track.getMaxHeight());
 
         // save left barrier
         List<List<Integer>> leftSide = new ArrayList<>();
@@ -73,13 +73,6 @@ public abstract class TrackIO {
         try {
             JSONObject jsonObject = new JSONObject(FileIO.readFileToString(filePath));
 
-            // load game properties
-            String width = jsonObject.get("width").toString();
-            String height = jsonObject.get("height").toString();
-
-            model.setPaperWidth(Integer.valueOf(width));
-            model.setPaperHeight(Integer.valueOf(height));
-
             String X;
             String Y;
             List<Object> coordinatesArray;
@@ -106,10 +99,17 @@ public abstract class TrackIO {
                 right.addPoint(new Point(Integer.valueOf(X), Integer.valueOf(Y)));
             }
 
+            // load game properties
+            String width = jsonObject.get("width").toString();
+            String height = jsonObject.get("height").toString();
+
             // load new track
-            Track track = new Track(model);
+            Track track = new Track();
             track.setLeft(left);
             track.setRight(right);
+
+            track.setMaxWidth(Integer.valueOf(width));
+            track.setMaxHeight(Integer.valueOf(height));
             return track;
         } catch (IOException | JSONException ex) {
             ex.printStackTrace();
