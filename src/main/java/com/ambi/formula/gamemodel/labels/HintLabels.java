@@ -40,9 +40,8 @@ public class HintLabels {
     private Properties properties;
 
     public HintLabels(String language) {
-        String fileName = FileIO.getResourceFilePath(language + "/Hints.properties");
         try {
-            this.properties = FileIO.loadProperties(fileName);
+            this.properties = FileIO.loadProperties(language + "/Hints.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();

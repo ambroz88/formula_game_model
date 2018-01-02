@@ -6,6 +6,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Point;
@@ -20,16 +22,22 @@ import org.json.JSONObject;
  *
  * @author Jiri Ambroz
  */
-public abstract class TrackIO {
+public final class TrackIO {
 
     public static List<String> getAvailableTracks() {
         List<String> tracks = new ArrayList<>();
         File directory = new File("tracks");
 
-        for (File track : directory.listFiles()) {
-            tracks.add(track.getName().substring(0, track.getName().lastIndexOf(".")));
-        }
+        if (directory.exists()) {
 
+            File[] trackFiles = directory.listFiles();
+
+            if (trackFiles != null) {
+                for (File track : trackFiles) {
+                    tracks.add(track.getName().substring(0, track.getName().lastIndexOf(".")));
+                }
+            }
+        }
         return tracks;
     }
 
@@ -112,7 +120,7 @@ public abstract class TrackIO {
             track.setMaxHeight(Integer.valueOf(height));
             return track;
         } catch (IOException | JSONException ex) {
-            ex.printStackTrace();
+            Logger.getLogger(Track.class.getName()).log(Level.SEVERE, null, ex);
             return null;
         }
     }

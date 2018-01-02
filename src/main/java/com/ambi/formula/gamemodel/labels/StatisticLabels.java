@@ -20,9 +20,8 @@ public class StatisticLabels {
     private Properties properties;
 
     public StatisticLabels(String language) {
-        String fileName = FileIO.getResourceFilePath(language + "/StatPanel.properties");
         try {
-            this.properties = FileIO.loadProperties(fileName);
+            this.properties = FileIO.loadProperties(language + "/StatPanel.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();

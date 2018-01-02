@@ -25,9 +25,8 @@ public class TrackMenuLabels {
     private Properties properties;
 
     public TrackMenuLabels(String language) {
-        String fileName = FileIO.getResourceFilePath(language + "/TrackMenu.properties");
         try {
-            this.properties = FileIO.loadProperties(fileName);
+            this.properties = FileIO.loadProperties(language + "/TrackMenu.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();

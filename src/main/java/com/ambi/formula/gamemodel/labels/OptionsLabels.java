@@ -33,9 +33,8 @@ public class OptionsLabels {
     private Properties properties;
 
     public OptionsLabels(String language) {
-        String fileName = FileIO.getResourceFilePath(language + "/Options.properties");
         try {
-            this.properties = FileIO.loadProperties(fileName);
+            this.properties = FileIO.loadProperties(language + "/Options.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();

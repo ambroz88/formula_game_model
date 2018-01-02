@@ -23,9 +23,8 @@ public class StartMenuLabels {
     private Properties properties;
 
     public StartMenuLabels(String language) {
-        String fileName = FileIO.getResourceFilePath(language + "/StartMenu.properties");
         try {
-            this.properties = FileIO.loadProperties(fileName);
+            this.properties = FileIO.loadProperties(language + "/StartMenu.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();
