@@ -73,7 +73,7 @@ public class GameModel {
      */
     public void windowMouseClicked(Point click) {
         click.toGridUnits(gridSize);
-        if (!getPaper().isOutside(click)) {//TODO: if the turns is through finishline, than it should be valid
+        if (!getPaper().isOutside(click) || getStage() == AUTO_FINISH) {//TODO: if the turns is through finishline, than it should be valid
 
             if (getStage() != FIRST_TURN || getStage() == FIRST_TURN && turn.getActID() == 2) {
                 fireHint(HintLabels.EMPTY);
@@ -83,7 +83,7 @@ public class GameModel {
                 buildTrack.buildTrack(click, Track.LEFT);
             } else if (getStage() == BUILD_RIGHT) {//right side is build
                 buildTrack.buildTrack(click, Track.RIGHT);
-            } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_CRASH) {
+            } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_FINISH) {
                 processPlayerTurn(click);
             }
 

@@ -491,11 +491,12 @@ public class MakeTurn {
                     //kontrola zda hrac pred narazem projede cilem:
                     Object[] finish = Calc.crossing(act.getLast(), actPoint, track.getFinish());
                     if ((int) finish[0] != Calc.OUTSIDE && Calc.distance(act.getLast(), (Point) finish[1])
-                            < Calc.distance(act.getLast(), (Point) finish[1])) {
+                            < Calc.distance(act.getLast(), colPoints.getLast())) {
                         //hrac protne cil pred narazem
                         interPoints.addPoint((Point) finish[1]);
                         System.out.println("new interPoint - in crashed after finish line");
                         actPoint.setPosition(Point.FINISH);
+                        colision = false;
                     }
                 }
                 if (colision) {

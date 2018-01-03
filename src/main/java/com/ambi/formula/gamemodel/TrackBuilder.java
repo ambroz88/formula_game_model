@@ -365,6 +365,7 @@ public class TrackBuilder extends TrackValidator {
         reset();
         setLeft(track.getLine(Track.LEFT));
         setRight(track.getLine(Track.RIGHT));
+        setReady(track.getReady());
 
         getModel().setPaperWidth(track.getMaxWidth() + 10);
         getModel().setPaperHeight(track.getMaxHeight() + 10);
