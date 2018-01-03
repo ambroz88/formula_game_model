@@ -3,7 +3,6 @@ package com.ambi.formula.gamemodel;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
-import java.util.List;
 
 import com.ambi.formula.gamemodel.datamodel.Paper;
 import com.ambi.formula.gamemodel.datamodel.Point;
@@ -35,10 +34,9 @@ public class GameModel {
     private final CompSimul computer;
     private final TrackBuilder buildTrack;
     private final MakeTurn turn;
-    private final PropertyChangeSupport prop;
     private final Paper paper;
+    private final PropertyChangeSupport prop;
 
-    private List<Polyline> checkLines;
     private Polyline points;
     private Polyline badPoints;
     private Turns turns;
@@ -94,7 +92,7 @@ public class GameModel {
 
     public void keyPressed(int position) {
         //phase of the race
-        if (getStage() > FIRST_TURN && getStage() <= AUTO_CRASH && turns.getTurn(position).isExist()) {
+        if (getStage() > FIRST_TURN && getStage() <= AUTO_FINISH && turns.getTurn(position).isExist()) {
             Point click = turns.getTurn(position).getPosition();
             processPlayerTurn(click);
             repaintScene();
@@ -164,7 +162,6 @@ public class GameModel {
     public void prepareGame(int playerCount) {
         if (playerCount == 1) { //single mode
             computer.setTrackIndex(0);
-            checkLines = buildTrack.analyzeTrack();
         }
         resetPlayers();
         setPoints(turn.startPosition(buildTrack.getStart()));
@@ -382,28 +379,16 @@ public class GameModel {
         return paper;
     }
 
-    public int getPaperWidth() {
-        return paper.getWidth();
-    }
-
     public void setPaperWidth(int width) {
         int old = getPaper().getWidth();
         getPaper().setWidth(width);
         firePropertyChange("paperWidth", old, width); //cought by Draw and Options
     }
 
-    public int getPaperHeight() {
-        return paper.getHeight();
-    }
-
     public void setPaperHeight(int height) {
         int old = paper.getHeight();
         getPaper().setHeight(height);
         firePropertyChange("paperHeight", old, height); //cought by Draw and Options
-    }
-
-    public List<Polyline> getCheckLines() {
-        return checkLines;
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {

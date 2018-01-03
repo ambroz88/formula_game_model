@@ -33,7 +33,7 @@ public class CompSimul {
      */
     public Point compTurn() {
         f2 = model.getTurn().getFormula(2);
-        List<Polyline> checkLines = model.getCheckLines();
+        List<Polyline> checkLines = model.getBuilder().getCheckLines();
         int pointCount = model.getTurns().getPoints().getLength();
         Point farestPoint = new Point();//bod s nejvzdalenejsi kolizi
         int minLimit = 5000;

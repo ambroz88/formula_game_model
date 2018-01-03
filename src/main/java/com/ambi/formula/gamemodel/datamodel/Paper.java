@@ -1,21 +1,22 @@
 package com.ambi.formula.gamemodel.datamodel;
 
-import java.awt.Dimension;
-
 /**
  *
  * @author Jiri Ambroz
  */
 public class Paper {
 
-    private Polyline horizontal, vertical;
-    private final Dimension dim;
+    private Polyline horizontal;
+    private Polyline vertical;
+    private int width;
+    private int height;
 
     /**
      * It calculates two polylines which compose square paper.
      */
     public Paper() {
-        this.dim = new Dimension(90, 50);
+        this.width = 90;
+        this.height = 50;
         updateGrid();
     }
 
@@ -26,32 +27,32 @@ public class Paper {
         vertical = new Polyline(Polyline.SEGMENT);
         horizontal = new Polyline(Polyline.SEGMENT);
         //create vertical lines of square paper
-        for (int x = 0; x <= dim.width; x++) {
+        for (int x = 0; x <= getWidth(); x++) {
             vertical.addPoint(new Point(x, 0));
-            vertical.addPoint(new Point(x, dim.height));
+            vertical.addPoint(new Point(x, getHeight()));
         }
         //create horizontal lines of square paper
-        for (int y = 0; y <= dim.height; y++) {
+        for (int y = 0; y <= getHeight(); y++) {
             horizontal.addPoint(new Point(0, y));
-            horizontal.addPoint(new Point(dim.width, y));
+            horizontal.addPoint(new Point(getWidth(), y));
         }
     }
 
     public int getWidth() {
-        return dim.width;
+        return width;
     }
 
-    public void setWidth(int width) {
-        dim.width = width;
+    public void setWidth(int paperWidth) {
+        this.width = paperWidth;
         updateGrid();
     }
 
     public int getHeight() {
-        return dim.height;
+        return height;
     }
 
-    public void setHeight(int height) {
-        dim.height = height;
+    public void setHeight(int paperHeight) {
+        this.height = paperHeight;
         updateGrid();
     }
 
@@ -62,7 +63,7 @@ public class Paper {
      * @return true if point is inside, false otherwise
      */
     public boolean isOutside(Point click) {
-        return click.x > dim.width || click.y > dim.height || click.x < 0 || click.y < 0;
+        return click.x > getWidth() || click.y > getHeight() || click.x < 0 || click.y < 0;
     }
 
     public Polyline getHorizontalLines() {

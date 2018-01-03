@@ -1,6 +1,5 @@
 package com.ambi.formula.gamemodel.datamodel;
 
-import java.awt.Color;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 
@@ -18,7 +17,7 @@ public class Formula extends Polyline {
 
     private int speed, side, moves, wait;
     private Polyline colLine; //two-points line to which this formula crashed
-    private Color color;
+    private int rgbColor;
     private String name;
     private double length; //actual distance which formula took
     private boolean winner;//is true when this formula finished the race
@@ -52,13 +51,13 @@ public class Formula extends Polyline {
         super.addPoint(p);
     }
 
-    public Color getColor() {
-        return color;
+    public int getColor() {
+        return rgbColor;
     }
 
-    public void setColor(Color color) {
-        Color old = getColor();
-        this.color = color;
+    public void setColor(int color) {
+        int old = getColor();
+        this.rgbColor = color;
         prop.firePropertyChange("color", old, color);
     }
 

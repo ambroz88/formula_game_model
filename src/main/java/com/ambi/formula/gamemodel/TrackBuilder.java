@@ -1,6 +1,8 @@
 package com.ambi.formula.gamemodel;
 
 import java.beans.PropertyChangeListener;
+import java.util.ArrayList;
+import java.util.List;
 
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
@@ -20,6 +22,7 @@ public class TrackBuilder extends TrackValidator {
 
     private final GameModel model;
     private int side, oppSide;
+    private List<Polyline> checkLines;
 
     public TrackBuilder(GameModel gModel) {
         this.model = gModel;
@@ -360,12 +363,135 @@ public class TrackBuilder extends TrackValidator {
         getModel().repaintScene();
     }
 
+    /**
+     * Metoda vytvori pole "prujezdovych" usecek, ktere pocitac projizdi pri
+     * prujezdu trati. Prvni useckou je start a posledni je cil. Ke kazdemu bodu
+     * z delsi krajnice je prirazen bod z protejsi strany. Delka pole se rovna
+     * delce delsi krajnice.
+     */
+    public void analyzeTrack() {
+        int lowIndex = 0;
+        int maxLength = getLong().getLength();
+        Polyline longSide = getLong();
+        Polyline shortSide = getShort();
+        checkLines = new ArrayList<>();//seznam prujezdovych usecek
+        checkLines.add(getStart()); // prvni checkLine je start
+        //vykresleni checkLine:
+        Polyline check = new Polyline(getStart().getPreLast(), getStart().getLast());
+
+        //prochazeni delsi krajnice a hledani od kazdeho bodu vhodny protejsi bod
+        for (int k = 1; k < maxLength - 1; k++) {
+            int actIndex = lowIndex;
+            boolean intersect = false;
+            Point start = longSide.getPoint(k);//z tohoto bodu bude spustena kolmice
+            Point direction = longSide.getPoint(k - 1);
+            Point end = Calc.rightAngle(new Polyline(direction, start), getLongStr());
+
+            // ------------------ PROCHAZENI KRATSI STRANY -------------------
+            for (int i = lowIndex; i < shortSide.getLength() - 1; i++) {
+                Point opPoint1 = shortSide.getPoint(i);
+                Point opPoint2 = shortSide.getPoint(i + 1);
+                Object[] cross = Calc.crossing(start, end, opPoint1, opPoint2);
+
+                if ((int) cross[0] == Calc.INSIDE) {
+                    if (Calc.distance(opPoint1, (Point) cross[1]) <= Calc.distance(opPoint2, (Point) cross[1])) {
+                        actIndex = i;
+                    } else {
+                        actIndex = i + 1;
+                    }
+                    intersect = true;
+                    break;
+                } else if ((int) cross[0] == Calc.EDGE) {
+                    actIndex = i + 1;
+                    intersect = true;
+                    break;
+                }
+            }//-------------------------------------------------------------------
+            if (intersect == false && actIndex < shortSide.getLength() - 1) {
+                /* kolmice neprotnula zadnou protejsi stranu, a vybere se nejblizsi mezi
+                 * aktualnim poslednim a poslednim v linii */
+                actIndex = shortSide.getLength() - 1;
+            }
+            actIndex = findNearest(new Polyline(longSide.getPoint(k - 1), start), lowIndex, actIndex);
+            if (lowIndex != actIndex) {
+                //pokud se na kratsi strane vynechaji body, uz se nepocita posledni bod na kratke strane
+                lowIndex++;
+            }
+
+            Point opPoint = shortSide.getPoint(actIndex);
+            check.addPoint(start);
+            check.addPoint(opPoint);
+            if (getLongStr() == Track.LEFT) {
+                checkLines.add(new Polyline(start, opPoint));
+            } else {
+                checkLines.add(new Polyline(opPoint, start));
+            }
+
+            //prirazeni bodu z delsi strany i pro vynechane body na kratsi strane
+            while (lowIndex < actIndex) {
+                opPoint = shortSide.getPoint(lowIndex);
+                start = (Point) Calc.findNearest(opPoint, new Polyline(longSide.getPoint(k - 1), start)).get(1);
+                //je zachovano poradi: prvni bod je na leve strane a druhy na prave:
+                check.addPoint(start);
+                check.addPoint(opPoint);
+                if (getLongStr() == Track.LEFT) {
+                    checkLines.add(checkLines.size() - 1, new Polyline(start, opPoint));
+                } else {
+                    checkLines.add(checkLines.size() - 1, new Polyline(opPoint, start));
+                }
+                lowIndex++;
+            }
+            lowIndex = actIndex;
+        }
+
+        //k poslednim bodum kratsi strany nejsou prirazeny zadne body z delsi strany:
+        lowIndex++;
+        Point start = getLong().getPreLast();
+        while (lowIndex < getShort().getLength() - 1) {
+            Point opPoint = shortSide.getPoint(lowIndex);
+            //je zachovano poradi: prvni bod je na leve strane a druhy na prave:
+            check.addPoint(start);
+            check.addPoint(opPoint);
+            if (getLongStr() == Track.LEFT) {
+                checkLines.add(new Polyline(start, opPoint));
+            } else {
+                checkLines.add(new Polyline(opPoint, start));
+            }
+            lowIndex++;
+        }
+        checkLines.add(getFinish());
+    }
+
+    /**
+     * Metoda najde ve vstupni polylinii "data" index bodu, ktery je nejblizsi
+     * od vstupniho bodu last. Hledani ve vstupni linii je vymezeno dolnim a
+     * hornim indexem (min a max).
+     *
+     * @param edge - polylinie, ve ktere se hleda nejblizsi bod
+     * @param min - dolni mez, od ktere se hleda nejblizsi bod
+     * @param max - horni mez, ke ktere se hleda nejblizsi bod
+     * @return - index nejblizsiho bodu
+     */
+    private int findNearest(Polyline edge, int min, int max) {
+        Point last = edge.getLast();
+        int index = min;
+        for (int i = min + 1; i <= max; i++) {
+            Point actPoint = getShort().getPoint(i);
+            if (Calc.distance(last, getShort().getPoint(index)) > Calc.distance(last, actPoint)
+                    && Calc.sidePosition(actPoint, edge) == getShortStr()) {
+                index = i;
+            }
+        }
+        return index;
+    }
+
     public void setTrack(Track track) {
         getModel().endGame();
         reset();
         setLeft(track.getLine(Track.LEFT));
         setRight(track.getLine(Track.RIGHT));
         setReady(track.getReady());
+        analyzeTrack();
 
         getModel().setPaperWidth(track.getMaxWidth() + 10);
         getModel().setPaperHeight(track.getMaxHeight() + 10);
@@ -440,6 +566,10 @@ public class TrackBuilder extends TrackValidator {
 
     public GameModel getModel() {
         return model;
+    }
+
+    public List<Polyline> getCheckLines() {
+        return checkLines;
     }
 
     public void addPropertyChangeListener(PropertyChangeListener listener) {
