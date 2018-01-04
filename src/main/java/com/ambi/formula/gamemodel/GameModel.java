@@ -45,11 +45,9 @@ public class GameModel {
 
     private int stage;
     private int player;
-    private int gridSize;
 
     public GameModel() {
         stage = 1;
-        gridSize = 15;
         paper = new Paper();
         points = new Polyline(Polyline.GOOD_SET);
         badPoints = new Polyline(Polyline.CROSS_SET);
@@ -70,7 +68,7 @@ public class GameModel {
      * @param click is point in main panel where user clicked
      */
     public void windowMouseClicked(Point click) {
-        click.toGridUnits(gridSize);
+        click.toGridUnits(getPaper().getGridSize());
         if (!getPaper().isOutside(click) || getStage() == AUTO_FINISH) {//TODO: if the turns is through finishline, than it should be valid
 
             if (getStage() != FIRST_TURN || getStage() == FIRST_TURN && turn.getActID() == 2) {
@@ -124,7 +122,7 @@ public class GameModel {
         boolean onTrack = false;
         if (getStage() == EDIT_PRESS) {
 
-            click.toGridUnits(gridSize);
+            click.toGridUnits(getPaper().getGridSize());
             onTrack = buildTrack.clickOnTrack(click);
             if (!onTrack) {
                 fireHint(HintLabels.NO_POINT);
@@ -144,7 +142,7 @@ public class GameModel {
      */
     public void windowMouseReleased(Point click) {
         if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
-            click.toGridUnits(gridSize);
+            click.toGridUnits(getPaper().getGridSize());
 
             if (!buildTrack.isNewPointValid(click)) {
                 fireHint(HintLabels.CROSSING);
@@ -183,6 +181,7 @@ public class GameModel {
     public void switchStart() {
         setStage(BUILD_LEFT);
         getBuilder().switchStart();
+        getBuilder().analyzeTrack();
         resetPlayers();
     }
 
@@ -303,21 +302,6 @@ public class GameModel {
     }
 
     //============================ SETTERS AND GETTERS =========================
-    public int gridSize() {
-        return gridSize;
-    }
-
-    /**
-     * Setter for size of square edge on the "paper".
-     *
-     * @param size is new grid size
-     */
-    public void setGridSize(int size) {
-        int old = gridSize();
-        gridSize = size;
-        firePropertyChange("grid", old, gridSize()); //cought by Draw
-    }
-
     public Polyline getPoints() {
         return points;
     }
@@ -377,18 +361,6 @@ public class GameModel {
 
     public Paper getPaper() {
         return paper;
-    }
-
-    public void setPaperWidth(int width) {
-        int old = getPaper().getWidth();
-        getPaper().setWidth(width);
-        firePropertyChange("paperWidth", old, width); //cought by Draw and Options
-    }
-
-    public void setPaperHeight(int height) {
-        int old = paper.getHeight();
-        getPaper().setHeight(height);
-        firePropertyChange("paperHeight", old, height); //cought by Draw and Options
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {

@@ -600,6 +600,10 @@ public class MakeTurn {
         return racers.get(id);
     }
 
+    public int getFormulaCount() {
+        return racers.size();
+    }
+
     public void setTurns(int turnsCount) {
         this.turnsCount = turnsCount;
     }

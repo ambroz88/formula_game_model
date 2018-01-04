@@ -58,7 +58,7 @@ public class Formula extends Polyline {
     public void setColor(int color) {
         int old = getColor();
         this.rgbColor = color;
-        prop.firePropertyChange("color", old, color);
+        prop.firePropertyChange("color", old, color); //caught by PlayerPanel and Statistic panel
     }
 
     public String getName() {

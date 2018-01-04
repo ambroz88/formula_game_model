@@ -1,13 +1,18 @@
 package com.ambi.formula.gamemodel.datamodel;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
+
 /**
  *
  * @author Jiri Ambroz
  */
 public class Paper {
 
+    private final PropertyChangeSupport prop;
     private Polyline horizontal;
     private Polyline vertical;
+    private int gridSize;
     private int width;
     private int height;
 
@@ -17,6 +22,8 @@ public class Paper {
     public Paper() {
         this.width = 90;
         this.height = 50;
+        gridSize = 15;
+        prop = new PropertyChangeSupport(this);
         updateGrid();
     }
 
@@ -43,8 +50,10 @@ public class Paper {
     }
 
     public void setWidth(int paperWidth) {
+        int old = getWidth();
         this.width = paperWidth;
         updateGrid();
+        firePropertyChange("paperWidth", old, getWidth()); //cought by Draw and Options
     }
 
     public int getHeight() {
@@ -52,8 +61,25 @@ public class Paper {
     }
 
     public void setHeight(int paperHeight) {
+        int old = getHeight();
         this.height = paperHeight;
         updateGrid();
+        firePropertyChange("paperHeight", old, height); //cought by Draw and Options
+    }
+
+    public int getGridSize() {
+        return gridSize;
+    }
+
+    /**
+     * Setter for size of square edge on the "paper".
+     *
+     * @param size is new grid size
+     */
+    public void setGridSize(int size) {
+        int old = getGridSize();
+        gridSize = size;
+        firePropertyChange("grid", old, getGridSize()); //cought by Draw
     }
 
     /**
@@ -72,6 +98,18 @@ public class Paper {
 
     public Polyline getVerticalLines() {
         return vertical;
+    }
+
+    public void firePropertyChange(String prop, Object oldValue, Object newValue) {
+        this.prop.firePropertyChange(prop, oldValue, newValue);
+    }
+
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        prop.addPropertyChangeListener(listener);
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        prop.removePropertyChangeListener(listener);
     }
 
 }
