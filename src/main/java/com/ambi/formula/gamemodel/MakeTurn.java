@@ -166,7 +166,7 @@ public class MakeTurn {
 
     private void firstTurn(Point click) {
         Formula act = racers.get(actID);
-        Polyline points = model.getPoints();
+        Polyline points = model.getBuilder().getPoints();
         for (int i = 0; i < points.getLength(); i++) {
             //uzivatel klikl na jeden z moznych tahu:
             if (click.isEqual(points.getPoint(i))) {
@@ -175,7 +175,6 @@ public class MakeTurn {
                 //kdyz hraji dva hraci, smaze se startovni pozice prvniho
                 if (getActID() == 1) {
                     points.removePoint(i);//druhy hrac si tuto pozici jiz nemuze vybrat
-                    model.setPoints(points);
                 } else {
                     points.clear();
                     model.setStage(GameModel.NORMAL_TURN);
@@ -211,8 +210,8 @@ public class MakeTurn {
         dividePoints(turns, rivalLast);
 
         //kontrola, jestli se mozne tahy nenachazeji mimo viditelnou oblast
-        int turnLast = checkBorders(model.getTurns().getPoints());//pocet moznosti koncici za cilem
-        int turnOut = checkBorders(model.getTurns().getBadPoints());//pocet moznosti koncici narazem
+        int turnLast = model.getPaper().outPaperNumber(model.getTurns().getPoints());//pocet moznosti koncici za cilem
+        int turnOut = model.getPaper().outPaperNumber(model.getTurns().getBadPoints());//pocet moznosti koncici narazem
 
         //vsechny moznosti druheho hrace jsou mimo viditelnou oblast:
         // ----------------------- AUTOMATICKY TAH -------------------------
@@ -428,8 +427,8 @@ public class MakeTurn {
         System.out.println("----------------");
         Formula act = racers.get(actID);
         Track track = model.getBuilder().getTrack();
-        Polyline left = track.left();
-        Polyline right = track.right();
+        Polyline left = track.getLeft();
+        Polyline right = track.getRight();
         for (int i = 0; i < turns.getSize(); i++) {
             Point actPoint = turns.getTurn(i).getPosition();
 
@@ -508,19 +507,6 @@ public class MakeTurn {
             }
         }
         model.setTurns(turns);
-    }
-
-    private int checkBorders(Polyline data) {
-        //metoda vraci pocet bodu, ktere jsou mimo viditelnou cast vykreslovaciho okna
-        int outBorder = 0; //pocet moznych tahu mimo okno
-
-        for (int i = 0; i < data.getLength(); i++) {
-            //kontrola, jestli se mozne tahy nenachazeji mimo viditelnou oblast
-            if (model.getPaper().isOutside(data.getPoint(i))) {
-                outBorder++;
-            }
-        }
-        return outBorder;
     }
 
     public Polyline startPosition(Polyline startLine) {

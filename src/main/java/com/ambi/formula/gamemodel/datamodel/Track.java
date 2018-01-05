@@ -38,9 +38,9 @@ public class Track {
 
     public Polyline getLine(int side) {
         if (side == LEFT) {
-            return left();
+            return getLeft();
         } else {
-            return right();
+            return getRight();
         }
     }
 
@@ -54,16 +54,16 @@ public class Track {
 
     public Polyline getOppLine(int side) {
         if (side == LEFT) {
-            return right();
+            return getRight();
         } else {
-            return left();
+            return getLeft();
         }
     }
 
     public void addPoint(int side, Point point) {
         getLine(side).addPoint(point);
-        setReady((leftIndex == left().getLength() - 1 && left().getLength() > 1 && rightIndex >= right().getLength() - 4)
-                || (rightIndex == right().getLength() - 1 && right().getLength() > 1 && leftIndex >= left().getLength() - 4));
+        setReady((leftIndex == getLeft().getLength() - 1 && getLeft().getLength() > 1 && rightIndex >= getRight().getLength() - 4)
+                || (rightIndex == getRight().getLength() - 1 && getRight().getLength() > 1 && leftIndex >= getLeft().getLength() - 4));
         checkMaximum(point);
     }
 
@@ -101,23 +101,23 @@ public class Track {
         }
     }
 
-    public Polyline left() {
+    public Polyline getLeft() {
         return left;
     }
 
     public void setLeft(Polyline left) {
         this.left = left;
-        leftIndex = left().getLength() - 1;
+        leftIndex = getLeft().getLength() - 1;
         leftWidth = 3;
     }
 
-    public Polyline right() {
+    public Polyline getRight() {
         return right;
     }
 
     public void setRight(Polyline right) {
         this.right = right;
-        rightIndex = right().getLength() - 1;
+        rightIndex = getRight().getLength() - 1;
         rightWidth = 3;
     }
 
@@ -143,10 +143,10 @@ public class Track {
      * @return longer polyline
      */
     public Polyline getLong() {
-        if (left().getLength() >= right().getLength()) {
-            return left();
+        if (getLeft().getLength() >= getRight().getLength()) {
+            return getLeft();
         } else {
-            return right();
+            return getRight();
         }
     }
 
@@ -157,7 +157,7 @@ public class Track {
      */
     public int getLongStr() {
         //vrati delsi stranu trati jako text (left, right)
-        if (left().getLength() >= right().getLength()) {
+        if (getLeft().getLength() >= getRight().getLength()) {
             return LEFT;
         } else {
             return RIGHT;
@@ -170,7 +170,7 @@ public class Track {
      * @return String of shorter polyline (if it is LEFT or RIGHT side)
      */
     public int getShortStr() {
-        if (left().getLength() < right().getLength()) {
+        if (getLeft().getLength() < getRight().getLength()) {
             return LEFT;
         } else {
             return RIGHT;
@@ -184,10 +184,10 @@ public class Track {
      * @return shorter polyline
      */
     public Polyline getShort() {
-        if (left().getLength() < right().getLength()) {
-            return left();
+        if (getLeft().getLength() < getRight().getLength()) {
+            return getLeft();
         } else {
-            return right();
+            return getRight();
         }
     }
 
@@ -274,13 +274,13 @@ public class Track {
 
     //TODO: dokoncit drahu jak se slusi a patri
     public void finishIndexes() {
-        if (left().getLength() - leftIndex >= right().getLength() - rightIndex) {
-            for (int l = leftIndex + 1; l < left().getLength(); l++) {
-                Point actPoint = left().getPoint(l);
+        if (getLeft().getLength() - leftIndex >= getRight().getLength() - rightIndex) {
+            for (int l = leftIndex + 1; l < getLeft().getLength(); l++) {
+                Point actPoint = getLeft().getPoint(l);
                 double oldDist = 5000, dist;
                 int newIndex = rightIndex;
-                for (int r = newIndex; r < right().getLength(); r++) {
-                    dist = Calc.distance(actPoint, right().getPoint(r));
+                for (int r = newIndex; r < getRight().getLength(); r++) {
+                    dist = Calc.distance(actPoint, getRight().getPoint(r));
                     if (dist <= oldDist) {
                         oldDist = dist;
                         newIndex = r;
@@ -294,12 +294,12 @@ public class Track {
                 leftIndex++;
             }
         } else {
-            for (int r = rightIndex + 1; r < right().getLength(); r++) {
-                Point actPoint = right().getPoint(r);
+            for (int r = rightIndex + 1; r < getRight().getLength(); r++) {
+                Point actPoint = getRight().getPoint(r);
                 double oldDist = 5000, dist;
                 int newIndex = leftIndex;
-                for (int l = newIndex; l < left().getLength(); l++) {
-                    dist = Calc.distance(actPoint, left().getPoint(l));
+                for (int l = newIndex; l < getLeft().getLength(); l++) {
+                    dist = Calc.distance(actPoint, getLeft().getPoint(l));
                     if (dist <= oldDist) {
                         oldDist = dist;
                         newIndex = l;
@@ -324,8 +324,8 @@ public class Track {
      * @return polyline of start
      */
     public Polyline getStart() {
-        Point begin = left().getPoint(0);
-        Point end = right().getPoint(0);
+        Point begin = getLeft().getPoint(0);
+        Point end = getRight().getPoint(0);
         return new Polyline(begin, end);
     }
 
@@ -336,13 +336,13 @@ public class Track {
      * @return polyline of finish
      */
     public Polyline getFinish() {
-        Point begin = left().getLast();
-        Point end = right().getLast();
+        Point begin = getLeft().getLast();
+        Point end = getRight().getLast();
         return new Polyline(begin, end);
     }
 
     public boolean isReadyForDraw() {
-        return left().getLength() > 2 && right().getLength() > 2;
+        return getLeft().getLength() > 2 && getRight().getLength() > 2;
     }
 
     public boolean getReady() {
@@ -365,14 +365,14 @@ public class Track {
         int[] xPoints = new int[leftIndex + rightIndex + 2];
         int[] yPoints = new int[leftIndex + rightIndex + 2];
         for (int i = 0; i <= leftIndex; i++) {
-            xPoints[i] = (int) left().getPoint(i).getX() * gridSize;
-            yPoints[i] = (int) left().getPoint(i).getY() * gridSize;
+            xPoints[i] = (int) getLeft().getPoint(i).getX() * gridSize;
+            yPoints[i] = (int) getLeft().getPoint(i).getY() * gridSize;
         }
         for (int i = 0; i <= rightIndex; i++) {
             //right side has to be saved from the end to the start
             int opIndex = rightIndex - i;
-            xPoints[leftIndex + i + 1] = (int) right().getPoint(opIndex).getX() * gridSize;
-            yPoints[leftIndex + i + 1] = (int) right().getPoint(opIndex).getY() * gridSize;
+            xPoints[leftIndex + i + 1] = (int) getRight().getPoint(opIndex).getX() * gridSize;
+            yPoints[leftIndex + i + 1] = (int) getRight().getPoint(opIndex).getY() * gridSize;
         }
         int[][] track = {xPoints, yPoints};
         return track;
@@ -381,15 +381,15 @@ public class Track {
     public List<Polyline> getTrackLines() {
         List<Polyline> lines = new ArrayList<>();
         int length;
-        if (left().getLength() <= right().getLength()) {
-            length = left().getLength();
+        if (getLeft().getLength() <= getRight().getLength()) {
+            length = getLeft().getLength();
         } else {
-            length = right().getLength();
+            length = getRight().getLength();
         }
 
         Polyline line;
         for (int i = 0; i < length; i++) {
-            line = new Polyline(left().getPoint(i), right().getPoint(i));
+            line = new Polyline(getLeft().getPoint(i), getRight().getPoint(i));
             lines.add(line);
         }
         return lines;
@@ -404,14 +404,14 @@ public class Track {
      * to left reverse.
      */
     public void switchStart() {
-        Polyline tempRight = new Polyline(right());
-        Polyline tempLeft = new Polyline(left());
-        left().clear();
-        right().clear();
+        Polyline tempRight = new Polyline(getRight());
+        Polyline tempLeft = new Polyline(getLeft());
+        getLeft().clear();
+        getRight().clear();
         left = tempRight.reverse();
         right = tempLeft.reverse();
-        leftIndex = left().getLength() - 1;
-        rightIndex = right().getLength() - 1;
+        leftIndex = getLeft().getLength() - 1;
+        rightIndex = getRight().getLength() - 1;
     }
 
     public void reset() {
@@ -431,7 +431,7 @@ public class Track {
 
     @Override
     public String toString() {
-        return "left size = " + left().getLength() + ", right size = " + right().getLength();
+        return "left size = " + getLeft().getLength() + ", right size = " + getRight().getLength();
     }
 
 }

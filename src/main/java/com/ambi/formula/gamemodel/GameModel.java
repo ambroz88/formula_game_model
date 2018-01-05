@@ -6,7 +6,6 @@ import java.io.IOException;
 
 import com.ambi.formula.gamemodel.datamodel.Paper;
 import com.ambi.formula.gamemodel.datamodel.Point;
-import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.labels.HintLabels;
@@ -37,8 +36,6 @@ public class GameModel {
     private final Paper paper;
     private final PropertyChangeSupport prop;
 
-    private Polyline points;
-    private Polyline badPoints;
     private Turns turns;
     private String language;
     private HintLabels hintLabels;
@@ -49,8 +46,6 @@ public class GameModel {
     public GameModel() {
         stage = 1;
         paper = new Paper();
-        points = new Polyline(Polyline.GOOD_SET);
-        badPoints = new Polyline(Polyline.CROSS_SET);
         turns = new Turns();
 
         prop = new PropertyChangeSupport(this);
@@ -161,8 +156,9 @@ public class GameModel {
         if (playerCount == 1) { //single mode
             computer.setTrackIndex(0);
         }
+        buildTrack.analyzeTrack();
         resetPlayers();
-        setPoints(turn.startPosition(buildTrack.getStart()));
+        getBuilder().setPoints(turn.startPosition(buildTrack.getStart()));
         buildTrack.setLeftWidth(3);
         buildTrack.setRightWidth(3);
 
@@ -200,12 +196,30 @@ public class GameModel {
         return saved;
     }
 
+    public void endGame() {
+        setStage(BUILD_LEFT);
+        firePropertyChange("buildTrack", false, true); // cought by TrackMenu
+        firePropertyChange("startDraw", false, true); // cought by TrackMenu and Draw
+        getBuilder().getCheckLines().clear();
+        resetPlayers();
+    }
+
+    public void loadTrackActions() {
+        endGame();
+        getPaper().setWidth(getBuilder().getMaxWidth() + 10);
+        getPaper().setHeight(getBuilder().getMaxHeight() + 10);
+
+        fireTrackReady(true);
+        repaintScene();
+    }
+
     /**
      * Method for clearing whole scene: track, formulas and points.
      */
     public void resetGame() {
         setStage(BUILD_LEFT);
         buildTrack.reset();
+        buildTrack.getCheckLines().clear();
         resetPlayers();
     }
 
@@ -215,34 +229,25 @@ public class GameModel {
     public void resetPlayers() {
         turn.getFormula(1).reset();
         turn.getFormula(2).reset();
-        resetPoints();
-    }
-
-    /**
-     * Method for clearing points.
-     */
-    public void resetPoints() {
-        points.clear();
-        badPoints.clear();
+        getBuilder().resetPoints();
         repaintScene();
     }
 
     public void checkWinner() {
-
         if (turn.getFormula(2).getWin() == true) {
             winnerAnnoucment();
         } else if (turn.getFormula(1).getWin() == true && turn.getFinishType() != MakeTurn.SECOND_CHANCE) {
             winnerAnnoucment();
+        } else if (turn.getFormula(1).getWin() == true && turn.getActID() == 2) {
+            winnerAnnoucment();
         }
-
     }
 
     /**
      * It generates the message about winner and game is finished.
      */
     public void winnerAnnoucment() {
-        points.clear();
-        badPoints.clear();
+        getBuilder().resetPoints();
         setStage(GAME_OVER);
         String finalMessage;
 
@@ -286,38 +291,15 @@ public class GameModel {
     }
 
     public void fireHint(String hintLabelProperty) {
-        firePropertyChange("hint", "-1", hintLabels.getValue(hintLabelProperty)); //cought by StatBar
+        firePropertyChange("hint", "", hintLabels.getValue(hintLabelProperty)); //cought by StatBar
     }
 
-    public void endGame() {
-        setStage(BUILD_LEFT);
-        firePropertyChange("buildTrack", false, true);
-        firePropertyChange("startDraw", false, true); // cought by TrackMenu and Draw
-        resetPlayers();
-    }
-
-    public void loadSelectedTrack() {
+    public void fireLoadTrack() {
         //cought by TracksComponent
         firePropertyChange("loadTrack", false, true);
     }
 
     //============================ SETTERS AND GETTERS =========================
-    public Polyline getPoints() {
-        return points;
-    }
-
-    public void setPoints(Polyline points) {
-        this.points = points;
-    }
-
-    public Polyline getBadPoints() {
-        return badPoints;
-    }
-
-    public void setBadPoints(Polyline badPoints) {
-        this.badPoints = badPoints;
-    }
-
     public Turns getTurns() {
         return turns;
     }

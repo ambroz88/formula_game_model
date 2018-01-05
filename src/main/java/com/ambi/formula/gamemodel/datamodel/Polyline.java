@@ -2,6 +2,8 @@ package com.ambi.formula.gamemodel.datamodel;
 
 import java.util.ArrayList;
 
+import com.ambi.formula.gamemodel.utils.Calc;
+
 /**
  * This class <code>polyline</code> represent <code>ArrayList</code> of
  * <code>points</code>. It could means line or just separate point which hasn't
@@ -191,6 +193,50 @@ public class Polyline {
             copy.addPoint(points.get(i));
         }
         return copy;
+    }
+
+    /**
+     * This method controls if segment <code>Polyline line.last()</code> and
+     * Point click crosses or touches any of the rest of segment in line.
+     *
+     * @param click point where the track will be constructed
+     * @return true if there is a colision
+     */
+    public boolean checkOwnCrossing(Point click) {
+        boolean crossed = false;
+        if (getLength() > 1) {
+            Point last = getLast();
+            //prochazeni usecek leve krajnice od prvni do posledni usecky
+            for (int i = 0; i < getLength() - 2; i++) {
+                //kontrola mozne kolize usecek:
+                if ((int) Calc.crossing(last, click, getPoint(i), getPoint(i + 1))[0] != Calc.OUTSIDE) {
+                    crossed = true;
+                    break;
+                }
+            }
+        }
+        return crossed;
+    }
+
+    /**
+     * This method controls if segment <code>line</code> and Point click crosses
+     * or touches any of the rest of segment in line.
+     *
+     * @param last last point of line which is constructed
+     * @param click point where the track will be constructed
+     * @return true if there is a colision
+     */
+    public boolean checkSegmentCrossing(Point last, Point click) {
+        if (getLength() > 1) {
+            //prochazeni usecek leve krajnice od prvni do posledni usecky
+            for (int i = 0; i < getLength() - 1; i++) {
+                //kontrola mozne kolize usecek:
+                if ((int) Calc.crossing(last, click, getPoint(i), getPoint(i + 1))[0] != Calc.OUTSIDE) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     @Override

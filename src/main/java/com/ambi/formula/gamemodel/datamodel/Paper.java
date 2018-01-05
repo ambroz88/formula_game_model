@@ -92,6 +92,24 @@ public class Paper {
         return click.x > getWidth() || click.y > getHeight() || click.x < 0 || click.y < 0;
     }
 
+    /**
+     * It returns number of points, which are outside of the visible part of
+     * drawing window.
+     *
+     * @param data is set of points that will be tested
+     * @return number of points outside of paper
+     */
+    public int outPaperNumber(Polyline data) {
+        int outBorder = 0;
+
+        for (int i = 0; i < data.getLength(); i++) {
+            if (isOutside(data.getPoint(i))) {
+                outBorder++;
+            }
+        }
+        return outBorder;
+    }
+
     public Polyline getHorizontalLines() {
         return horizontal;
     }
