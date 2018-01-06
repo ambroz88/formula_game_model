@@ -7,14 +7,12 @@ import java.io.IOException;
 import com.ambi.formula.gamemodel.datamodel.Paper;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Track;
-import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.utils.TrackIO;
 
 /**
- * This class serves as model for whole game. It communicates with other models
- * e.g. for building the track or making next turn. It also fires property
- * changes for GUI.
+ * This class serves as model for whole game. It communicates with other models e.g. for building
+ * the track or making next turn. It also fires property changes for GUI.
  *
  * @author Jiri Ambroz
  */
@@ -32,11 +30,10 @@ public class GameModel {
 
     private final CompSimul computer;
     private final TrackBuilder buildTrack;
-    private final MakeTurn turn;
+    private final MakeTurn turnMaker;
     private final Paper paper;
     private final PropertyChangeSupport prop;
 
-    private Turns turns;
     private String language;
     private HintLabels hintLabels;
 
@@ -46,19 +43,18 @@ public class GameModel {
     public GameModel() {
         stage = 1;
         paper = new Paper();
-        turns = new Turns();
 
         prop = new PropertyChangeSupport(this);
 
         buildTrack = new TrackBuilder(this);
-        turn = new MakeTurn(this);
+        turnMaker = new MakeTurn(this);
         computer = new CompSimul(this);
     }
 
     // ========================== METHODS FROM GUI ===========================
     /**
-     * This is main method that decides what happens when user clicked in the
-     * main pnnel. According the game stage there is launch suitable action.
+     * This is main method that decides what happens when user clicked in the main pnnel. According
+     * the game stage there is launch suitable action.
      *
      * @param click is point in main panel where user clicked
      */
@@ -66,14 +62,16 @@ public class GameModel {
         click.toGridUnits(getPaper().getGridSize());
         if (!getPaper().isOutside(click) || getStage() == AUTO_FINISH) {//TODO: if the turns is through finishline, than it should be valid
 
-            if (getStage() != FIRST_TURN || getStage() == FIRST_TURN && turn.getActID() == 2) {
+            if (getStage() != FIRST_TURN || getStage() == FIRST_TURN && turnMaker.getActID() == 2) {
                 fireHint(HintLabels.EMPTY);
             }
 
             if (getStage() == BUILD_LEFT) {//left side is build
                 buildTrack.buildTrack(click, Track.LEFT);
+                fireHint(getBuilder().getMessage());
             } else if (getStage() == BUILD_RIGHT) {//right side is build
                 buildTrack.buildTrack(click, Track.RIGHT);
+                fireHint(getBuilder().getMessage());
             } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_FINISH) {
                 processPlayerTurn(click);
             }
@@ -85,22 +83,22 @@ public class GameModel {
 
     public void keyPressed(int position) {
         //phase of the race
-        if (getStage() > FIRST_TURN && getStage() <= AUTO_FINISH && turns.getTurn(position).isExist()) {
-            Point click = turns.getTurn(position).getPosition();
+        if (getStage() > FIRST_TURN && getStage() <= AUTO_FINISH && getTurnMaker().getTurns().getTurn(position).isExist()) {
+            Point click = getTurnMaker().getTurns().getTurn(position).getPosition();
             processPlayerTurn(click);
             repaintScene();
         }
     }
 
     private void processPlayerTurn(Point click) {
-        turn.turn(click);
+        turnMaker.turn(click);
         checkWinner();
         //SINGLE mode
-        if (player == 1 && turn.getActID() == 2 && getStage() != FIRST_TURN) {
+        if (player == 1 && turnMaker.getActID() == 2 && getStage() != FIRST_TURN) {
             //computer turn
             click = computer.compTurn();
-            turn.turn(click);
-            if (turn.getActID() == 2) {
+            turnMaker.turn(click);
+            if (turnMaker.getActID() == 2) {
                 fireHint(HintLabels.NEXT_COMP_TURN);
             }
             checkWinner();
@@ -132,23 +130,23 @@ public class GameModel {
     /**
      * EDITACE BODU - uvolneni mysi
      *
-     * @param click je bod na hlavnim panelu, kde uzivatel uvolnil mys (coz
-     * znamena misto presunuti bodu trati)
+     * @param click je bod na hlavnim panelu, kde uzivatel uvolnil mys (coz znamena misto presunuti
+     * bodu trati)
      */
     public void windowMouseReleased(Point click) {
         if (getStage() == EDIT_RELEASE) {//urci se nove souradnice premistovaneho bodu. Kontrola kolize s ostatni trati
             click.toGridUnits(getPaper().getGridSize());
 
+            setStage(EDIT_PRESS);
             if (!buildTrack.isNewPointValid(click)) {
                 fireHint(HintLabels.CROSSING);
             }
-            setStage(EDIT_PRESS);
         }
     }
 
     /**
-     * It prepares game for start - track is correctly drawn. When it is single
-     * mode, track is analysed for computer turns.
+     * It prepares game for start - track is correctly drawn. When it is single mode, track is
+     * analysed for computer turns.
      *
      * @param playerCount is number of players
      */
@@ -158,21 +156,20 @@ public class GameModel {
         }
         buildTrack.analyzeTrack();
         resetPlayers();
-        getBuilder().setPoints(turn.startPosition(buildTrack.getStart()));
+        getBuilder().setPoints(turnMaker.startPosition(buildTrack.getStart()));
         buildTrack.setLeftWidth(3);
         buildTrack.setRightWidth(3);
 
         setStage(FIRST_TURN);
         player = playerCount;
-        turn.setID(1, 2);   //it says which formula is on turn and which is second
+        turnMaker.setID(1, 2);   //it says which formula is on turn and which is second
         fireHint(HintLabels.START_POSITION);
-        firePropertyChange("startGame", 0, turn.getActID()); // cought by Draw and TrackMenu
+        firePropertyChange("startGame", 0, turnMaker.getActID()); // cought by Draw and TrackMenu
     }
 
     /**
-     * Method for switching start and finish. It doesn't draw new start
-     * positions. It deletes and restarts variables so game will be ready to
-     * start.
+     * Method for switching start and finish. It doesn't draw new start positions. It deletes and
+     * restarts variables so game will be ready to start.
      */
     public void switchStart() {
         setStage(BUILD_LEFT);
@@ -218,8 +215,8 @@ public class GameModel {
      */
     public void resetGame() {
         setStage(BUILD_LEFT);
-        buildTrack.reset();
-        buildTrack.getCheckLines().clear();
+        getBuilder().reset();
+        getBuilder().getCheckLines().clear();
         resetPlayers();
     }
 
@@ -227,61 +224,51 @@ public class GameModel {
      * Method for clearing formulas and points.
      */
     public void resetPlayers() {
-        turn.getFormula(1).reset();
-        turn.getFormula(2).reset();
-        getBuilder().resetPoints();
+        turnMaker.getFormula(1).reset();
+        turnMaker.getFormula(2).reset();
+        getBuilder().getPoints().clear();
         repaintScene();
     }
 
     public void checkWinner() {
-        if (turn.getFormula(2).getWin() == true) {
-            winnerAnnoucment();
-        } else if (turn.getFormula(1).getWin() == true && turn.getFinishType() != MakeTurn.SECOND_CHANCE) {
-            winnerAnnoucment();
-        } else if (turn.getFormula(1).getWin() == true && turn.getActID() == 2) {
-            winnerAnnoucment();
+        if (turnMaker.getFormula(2).getWin() == true) {
+            winnerAnnouncement();
+        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getFinishType() != MakeTurn.SECOND_CHANCE) {
+            winnerAnnouncement();
+        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getActID() == 2) {
+            winnerAnnouncement();
         }
     }
 
     /**
      * It generates the message about winner and game is finished.
      */
-    public void winnerAnnoucment() {
-        getBuilder().resetPoints();
+    public void winnerAnnouncement() {
+        getTurnMaker().resetTurns();
         setStage(GAME_OVER);
-        String finalMessage;
 
-        if (turn.getFormula(1).getWin() && turn.getFormula(2).getWin() == false) {
-            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else if (turn.getFormula(2).getWin() && turn.getFormula(1).getWin() == false) {
-            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } //oba souperi projeli cilem a rozhoduje mensi ujeta vzdalenost
-        else if (turn.getFormula(1).getDist() < turn.getFormula(2).getDist()) {
-            finalMessage = turn.getFormula(1).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else if (turn.getFormula(1).getDist() > turn.getFormula(2).getDist()) {
-            finalMessage = turn.getFormula(2).getName() + " " + hintLabels.getValue(HintLabels.WINNER);
-        } else {
-            finalMessage = hintLabels.getValue(HintLabels.BOTH_WIN);
-        }
-
-        firePropertyChange("winner", "", finalMessage); // cought by StatBar
+        //cought by StatisticComponent
+        firePropertyChange("winner", "", getTurnMaker().createWinnerMessage());
         repaintScene();
     }
 
     //============================ FIRE CHANGES TO GUI =========================
     public void fireCrash(int count) {
         //nastaveni informace o narazu do mantinelu
-        String text = hintLabels.getValue(HintLabels.OUCH) + " " + turn.getFormula(turn.getActID()).getName() + " "
+        String text = hintLabels.getValue(HintLabels.OUCH) + " " + turnMaker.getFormula(turnMaker.getActID()).getName() + " "
                 + hintLabels.getValue(HintLabels.CRASH) + " " + count + "!!!";
-        firePropertyChange("crash", "", text); //cought by StatBar
+        //cought by StatisticComponent
+        firePropertyChange("crash", "", text);
     }
 
     public void repaintScene() {
-        firePropertyChange("repaint", false, true); //cought by Draw
+        //cought by Draw
+        firePropertyChange("repaint", false, true);
     }
 
     public void fireTrackReady(boolean ready) {
-        firePropertyChange("startVisible", !ready, ready); // cought by StartMenu, TrackMenu
+        // cought by StartMenu, TrackMenu
+        firePropertyChange("startVisible", !ready, ready);
         if (ready) {
             fireHint(HintLabels.TRACK_READY);
             repaintScene();
@@ -291,7 +278,8 @@ public class GameModel {
     }
 
     public void fireHint(String hintLabelProperty) {
-        firePropertyChange("hint", "", hintLabels.getValue(hintLabelProperty)); //cought by StatBar
+        //cought by StatisticComponent
+        firePropertyChange("hint", "", hintLabels.getValue(hintLabelProperty));
     }
 
     public void fireLoadTrack() {
@@ -300,14 +288,6 @@ public class GameModel {
     }
 
     //============================ SETTERS AND GETTERS =========================
-    public Turns getTurns() {
-        return turns;
-    }
-
-    public void setTurns(Turns turns) {
-        this.turns = turns;
-    }
-
     public int getStage() {
         return stage;
     }
@@ -315,12 +295,15 @@ public class GameModel {
     /**
      * Metoda nastavi fazi hry, ktera je udana celym cislem.
      *
-     * @param stage 1-2 = staveni leve, resp. prave krajnice; 3-4 = editace bodu
-     * trate; 5 = zahajovaci tah; 6 = normalni tah hrace; 7-8 = automaticke tahy
-     * (naraz resp. projeti cilem)
+     * @param stage 1-2 = staveni leve, resp. prave krajnice; 3-4 = editace bodu trate; 5 =
+     * zahajovaci tah; 6 = normalni tah hrace; 7-8 = automaticke tahy (naraz resp. projeti cilem)
      */
     public void setStage(int stage) {
         this.stage = stage;
+        if (stage == EDIT_PRESS) {
+            fireHint(HintLabels.MOVE_POINTS);
+            repaintScene();
+        }
     }
 
     public String getLanguage() {
@@ -333,8 +316,12 @@ public class GameModel {
         prop.firePropertyChange("language", null, language);
     }
 
-    public MakeTurn getTurn() {
-        return turn;
+    public String getHintLabel(String hintLabelProperty) {
+        return hintLabels.getValue(hintLabelProperty);
+    }
+
+    public MakeTurn getTurnMaker() {
+        return turnMaker;
     }
 
     public TrackBuilder getBuilder() {

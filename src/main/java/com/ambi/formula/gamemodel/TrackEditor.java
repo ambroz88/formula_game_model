@@ -46,7 +46,7 @@ public class TrackEditor extends Track {
 
         //-------- cyklus projde vsechny USECKY LEVE KRAJNICE: -------------
         for (int i = 0; i < getLeft().getLength() - 1; i++) {
-            Polyline actLeft = new Polyline(getLeft().getPoint(i), getLeft().getPoint(i + 1));
+            Polyline actLeft = getLeft().getSegment(i);
             // ______ premistovany bod je z prave krajnice: ______
             if (indexShort > 0) {
                 Point newEdge1 = getRight().getPoint(indexShort - 1);
@@ -70,7 +70,7 @@ public class TrackEditor extends Track {
         }
         //-------- cyklus projde vsechny USECKY PRAVE KRAJNICE: ------------
         for (int i = 0; i < getRight().getLength() - 1; i++) {
-            Polyline actRight = new Polyline(getRight().getPoint(i), getRight().getPoint(i + 1));
+            Polyline actRight = getRight().getSegment(i);
             //______ premistovany bod je z leve krajnice: _______
             if (indexLong > 0) {
                 Point newEdge1 = getLeft().getPoint(indexLong - 1);

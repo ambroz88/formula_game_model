@@ -2,6 +2,7 @@ package com.ambi.formula.gamemodel.datamodel;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.List;
 
 /**
  *
@@ -99,11 +100,11 @@ public class Paper {
      * @param data is set of points that will be tested
      * @return number of points outside of paper
      */
-    public int outPaperNumber(Polyline data) {
+    public int outPaperNumber(List<Point> data) {
         int outBorder = 0;
 
-        for (int i = 0; i < data.getLength(); i++) {
-            if (isOutside(data.getPoint(i))) {
+        for (int i = 0; i < data.size(); i++) {
+            if (isOutside(data.get(i))) {
                 outBorder++;
             }
         }

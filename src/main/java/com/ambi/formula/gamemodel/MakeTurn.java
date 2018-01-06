@@ -34,6 +34,7 @@ public class MakeTurn {
     private final GameModel model;
     private final HashMap<Integer, Formula> racers;
     private final Polyline colPoints, interPoints;
+    private Turns turns;
     private int actID;
     private int rivalID;
     private int finishType;
@@ -47,6 +48,7 @@ public class MakeTurn {
         racers = new HashMap<>();
         racers.put(1, new Formula());
         racers.put(2, new Formula());
+        turns = new Turns();
         actID = 1;
         rivalID = 2;
         lengthHist = LENGTH_MAX;
@@ -54,10 +56,13 @@ public class MakeTurn {
         turnsCount = FOUR_TURNS;
     }
 
+    /**
+     * Hru hraji dva hraci - fAct je na tahu a fRival je formule soupere podle aktualni faze hry se
+     * provede prislusna akce metoda vytvori tah hrace a vykresli moznosti tahu pro soupere.
+     *
+     * @param click is point where player clicked
+     */
     public void turn(Point click) {
-        /* Hru hraji dva hraci - fAct je na tahu a fRival je formule soupere
-         * podle aktualni faze hry se provede prislusna akce
-         * metoda vytvori tah hrace a vykresli moznosti tahu pro soupere */
         Formula act = racers.get(actID);
 
         //--------------------- ZAHAJOVACI TAH --------------------------
@@ -68,15 +73,15 @@ public class MakeTurn {
             } // ------------------------ NORMALNI TAH HRACE ------------------------
             case GameModel.NORMAL_TURN: {
                 model.fireHint(HintLabels.EMPTY);
-                Polyline points = model.getTurns().getPoints();
+                List<Point> points = getTurns().getPoints();
                 // prochazeni moznych tahu
-                for (int i = 0; i < points.getLength(); i++) {
+                for (int i = 0; i < points.size(); i++) {
                     //uzivatel klikl na jeden z moznych tahu:
-                    if (click.isEqual(points.getPoint(i))) {
+                    if (click.isEqual(points.get(i))) {
                         act.addPoint(click);
                         act.movesUp();
                         //hrac protne cilovou caru:
-                        if (points.getPoint(i).getPosition().contains(Point.FINISH)
+                        if (points.get(i).getPosition().contains(Point.FINISH)
                                 && Track.LEFT == Calc.sidePosition(click, model.getBuilder().getFinish())) {
                             //nastaveni informaci o jizde:
                             System.out.println("interpoints size: " + interPoints.getLength());
@@ -85,7 +90,7 @@ public class MakeTurn {
                             act.setWin(true);//hrac je v cili
                             waitTurn(act, "interFinish");
                         }// hrac skonci svuj tah na cilove care
-                        else if (Point.FINISH_LINE.equals(points.getPoint(i).getPosition())) {
+                        else if (Point.FINISH_LINE.equals(points.get(i).getPosition())) {
                             //nastaveni informaci o vzdalenosti:
                             act.lengthUp();
                             waitTurn(act, "normal");
@@ -97,9 +102,9 @@ public class MakeTurn {
                     } // konec if kliknu na jeden z bodu points
                 }// konec prochazeni bezkoliznich moznosti
                 // ------------------- HRAC SE VYBOURAL --------------------------
-                for (int i = 0; i < model.getTurns().getBadPoints().getLength(); i++) {
+                for (int i = 0; i < getTurns().getBadPoints().size(); i++) {
                     //hrac 1 klikl na jeden z koliznich tahu:
-                    if (click.isEqual(model.getTurns().getBadPoints().getPoint(i))) {
+                    if (click.isEqual(getTurns().getBadPoints().get(i))) {
                         act.movesUp();
                         int maxSpeed = act.maxSpeed(click);
                         act.setWait(maxSpeed + 1);
@@ -111,7 +116,7 @@ public class MakeTurn {
                         act.lengthUp();
                         if (getFinishType() == COLLISION) {//konec hry po kolizi
                             racers.get(rivalID).setWin(true);
-                            model.winnerAnnoucment();
+                            model.winnerAnnouncement();
                         } else {
                             // pokud hrac 2 take boural, zjisti se kdo vyjede driv
                             waitTurn(act, "bothCrash");//prida novy stred a prida ujetou vzdalenost
@@ -123,21 +128,21 @@ public class MakeTurn {
             case GameModel.AUTO_CRASH: {
                 //vsechny spatne body jsou mimo okno = naraz
                 //existuje prusecik s krajnici a hrac boura:
-                List<Object> colision = Calc.findNearest(act.getLast(), model.getTurns().getBadPoints());//najde nejkratsi tah
                 act.movesUp();
-                int maxSpeed = act.maxSpeed((Point) colision.get(1));
+                int maxSpeed = act.maxSpeed(Calc.findNearestPoint(act.getLast(), getTurns().getBadPoints()));
                 act.setWait(maxSpeed + 1);
                 model.fireCrash(maxSpeed);
                 //nastaveni poctu tahu hrace:
                 act.movesUp(maxSpeed);
                 //pridani pruseciku do tahu formule:
-                act.addPoint(colPoints.getPoint((int) colision.get(0)));
+                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getBadPoints());//najde nejkratsi tah
+                act.addPoint(colPoints.getPoint(closestIndex));
                 act.lengthUp();
                 //moznosti tahu:
                 model.setStage(GameModel.NORMAL_TURN);
                 if (getFinishType() == COLLISION) {//konec hry po kolizi
                     racers.get(rivalID).setWin(true);
-                    model.winnerAnnoucment();
+                    model.winnerAnnouncement();
                 } else {
                     // pokud hrac 2 take boural, zjisti se kdo vyjede driv
 //                    model.setStage(6);
@@ -147,9 +152,9 @@ public class MakeTurn {
             } //--------------- AUTOMATICKY TAH - PROJETI CILE ---------------------
             case GameModel.AUTO_FINISH: {
                 //vsechny dobre tahy nejsou videt - projeti startem:
-                List<Object> colision = Calc.findNearest(act.getLast(), model.getTurns().getPoints());//najde nejkratsi tah
-                act.addPoint((Point) colision.get(1));
-                act.lengthUp(interPoints.getPoint((int) colision.get(0)), act.getPreLast());
+                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getPoints());
+                act.addPoint(Calc.findNearestPoint(act.getLast(), getTurns().getPoints()));
+                act.lengthUp(interPoints.getPoint(closestIndex), act.getPreLast());
                 act.movesUp();
                 act.setWin(true);
                 if (getActID() == 1) {//pokud hraje prvni hrac, da jeste sanci souperi na posledni tah
@@ -204,14 +209,12 @@ public class MakeTurn {
         Point center = new Point(cenX, cenY);//stred moznosti
 
         //create possibilities of next turn
-        Turns turns = createTurns(center, false);
-
-        // rozdeleni tahu podle narazu:
-        dividePoints(turns, rivalLast);
+        createTurns(center, false);
+        divideTurns(rivalLast);
 
         //kontrola, jestli se mozne tahy nenachazeji mimo viditelnou oblast
-        int turnLast = model.getPaper().outPaperNumber(model.getTurns().getPoints());//pocet moznosti koncici za cilem
-        int turnOut = model.getPaper().outPaperNumber(model.getTurns().getBadPoints());//pocet moznosti koncici narazem
+        int turnLast = model.getPaper().outPaperNumber(getTurns().getPoints());//pocet moznosti koncici za cilem
+        int turnOut = model.getPaper().outPaperNumber(getTurns().getBadPoints());//pocet moznosti koncici narazem
 
         //vsechny moznosti druheho hrace jsou mimo viditelnou oblast:
         // ----------------------- AUTOMATICKY TAH -------------------------
@@ -220,7 +223,7 @@ public class MakeTurn {
                 || (turnOut == NINE_TURNS && turnsCount == NINE_TURNS)) {//vsechny moznosti zpusobi naraz
             model.setStage(GameModel.AUTO_CRASH);
             model.fireHint(HintLabels.NEXT_CLOSE_TURN);
-        } else if (turnLast > 0 && turnLast == model.getTurns().getPoints().getLength()) {
+        } else if (turnLast > 0 && turnLast == getTurns().getPoints().size()) {
             //zadna dobra moznost neni videt - tah na nejblizsi
             model.setStage(GameModel.AUTO_FINISH);
             model.fireHint(HintLabels.NEXT_CLOSE_TURN);
@@ -228,10 +231,9 @@ public class MakeTurn {
     }
 
     /**
-     * Metoda najde novy stred po havarii a vykresli nove moznosti novy stred je
-     * prunikem kolmice kolizni hrany a kruznice se stredem v miste kolize a
-     * polomerem 0.6*velikost mrizky, pricemz bod musi lezet na trati colision
-     * je bod, ve kterem doslo k vyjeti z trati.
+     * Metoda najde novy stred po havarii a vykresli nove moznosti novy stred je prunikem kolmice
+     * kolizni hrany a kruznice se stredem v miste kolize a polomerem 0.6*velikost mrizky, pricemz
+     * bod musi lezet na trati colision je bod, ve kterem doslo k vyjeti z trati.
      */
     private void crashTurn() {
         Formula act = racers.get(actID);
@@ -296,9 +298,9 @@ public class MakeTurn {
             }
         }
         act.addPoint(crashCenter);
-        //vykresleni 4 moznosti noveho tahu
-        Turns turns = createTurns(crashCenter, true);
-        dividePoints(turns, racers.get(rivalID).getLast());
+        //vykresleni X moznosti noveho tahu
+        createTurns(crashCenter, true);
+        divideTurns(racers.get(rivalID).getLast());
     }
 
     public void waitTurn(Formula act, String task) {
@@ -324,7 +326,7 @@ public class MakeTurn {
                 switch (task) {
                     case "interFinish": //hrac na tahu projel cilem a jelikoz souper stoji, je konec hry
 //                    racers.put(actID, act);
-                        model.winnerAnnoucment();
+                        model.winnerAnnouncement();
                         break;
                     case "bothCrash"://hrac na tahu take boural
                         rival.setWait(rival.getWait() - 1);
@@ -354,8 +356,9 @@ public class MakeTurn {
         }
     }
 
-    private Turns createTurns(Point center, boolean crashMode) {
-        Turns turns = new Turns();
+    private void createTurns(Point center, boolean crashMode) {
+        //when Turns are creating again, all turns inside are non-colision
+        turns = new Turns();
         // upper-LEFT corner
         if (!crashMode) {
             turns.getTurn(0).setPosition(new Point(center.x - 1, center.y - 1));
@@ -410,18 +413,15 @@ public class MakeTurn {
         } else {
             turns.getTurn(8).setExist(false);
         }
-        return turns;
     }
 
     /**
-     * It devides possible turns into "clean" and "dirty". Dirty turn means
-     * formula crashed. In case that one possible turn is equal to rival
-     * position, that turns is not allowed.
+     * It devides possible turns into "clean" and "dirty". Dirty turn means formula crashed. In case
+     * that one possible turn is equal to rival position, that turns is not allowed.
      *
-     * @param turns are possible turns
      * @param rivalLast is position of rival formula
      */
-    private void dividePoints(Turns turns, Point rivalLast) {
+    private void divideTurns(Point rivalLast) {
         colPoints.clear();
         interPoints.clear();
         System.out.println("----------------");
@@ -437,7 +437,7 @@ public class MakeTurn {
                 Polyline colLine = new Polyline(Polyline.SEGMENT);
                 //----------- kontrola KOLIZE tahu s LEVOU STRANOU: -----------
                 for (int k = 0; k < left.getLength() - 1; k++) {
-                    Polyline actLeft = new Polyline(left.getPoint(k), left.getPoint(k + 1));
+                    Polyline actLeft = left.getSegment(k);
                     Object[] cross = Calc.crossing(act.getLast(), actPoint, actLeft);
                     if ((int) cross[0] != Calc.OUTSIDE) {
                         //novy bod ma prunik nebo se dotyka leve krajnice
@@ -452,7 +452,7 @@ public class MakeTurn {
                 if (colision == false) { //tah nekrizi levou krajnici
                     // ---------- kontrola KOLIZE novych moznosti s PRAVOU STRANOU: -------------
                     for (int k = 0; k < right.getLength() - 1; k++) {
-                        Polyline actRight = new Polyline(right.getPoint(k), right.getPoint(k + 1));
+                        Polyline actRight = right.getSegment(k);
                         Object[] cross = Calc.crossing(act.getLast(), actPoint, actRight);
                         if ((int) cross[0] != Calc.OUTSIDE) {
                             //novy bod ma prunik nebo se dotyka prave krajnice
@@ -506,7 +506,6 @@ public class MakeTurn {
                 turns.getTurn(i).setExist(false);
             }
         }
-        model.setTurns(turns);
     }
 
     public Polyline startPosition(Polyline startLine) {
@@ -562,6 +561,24 @@ public class MakeTurn {
         return points;
     }
 
+    public String createWinnerMessage() {
+        String finalMessage;
+        String winner = model.getHintLabel(HintLabels.WINNER);
+        if (getFormula(1).getWin() && getFormula(2).getWin() == false) {
+            finalMessage = getFormula(1).getName() + " " + winner;
+        } else if (getFormula(2).getWin() && getFormula(1).getWin() == false) {
+            finalMessage = getFormula(2).getName() + " " + winner;
+        } //oba souperi projeli cilem a rozhoduje mensi ujeta vzdalenost
+        else if (getFormula(1).getDist() < getFormula(2).getDist()) {
+            finalMessage = getFormula(1).getName() + " " + winner;
+        } else if (getFormula(1).getDist() > getFormula(2).getDist()) {
+            finalMessage = getFormula(2).getName() + " " + winner;
+        } else {
+            finalMessage = model.getHintLabel(HintLabels.BOTH_WIN);
+        }
+        return finalMessage;
+    }
+
     public void setFinishType(int finishType) {
         this.finishType = finishType;
     }
@@ -590,7 +607,15 @@ public class MakeTurn {
         return racers.size();
     }
 
-    public void setTurns(int turnsCount) {
+    public void resetTurns() {
+        turns.reset();
+    }
+
+    public Turns getTurns() {
+        return turns;
+    }
+
+    public void setTurnsCount(int turnsCount) {
         this.turnsCount = turnsCount;
     }
 

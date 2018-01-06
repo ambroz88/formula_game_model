@@ -1,5 +1,8 @@
 package com.ambi.formula.gamemodel.datamodel;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  *
  * @author Jiri Ambroz
@@ -19,21 +22,21 @@ public class Turns {
         return turns.length;
     }
 
-    public Polyline getPoints() {
-        Polyline points = new Polyline(Polyline.GOOD_SET);
-        for (int i = 0; i < 9; i++) {
-            if (turns[i].isExist() && turns[i].getType() == 1) {
-                points.addPoint(turns[i].getPosition());
+    public List<Point> getPoints() {
+        List<Point> points = new ArrayList<>();
+        for (Turn turn : turns) {
+            if (turn.isExist() && turn.getType() == 1) {
+                points.add(turn.getPosition());
             }
         }
         return points;
     }
 
-    public Polyline getBadPoints() {
-        Polyline points = new Polyline(Polyline.CROSS_SET);
-        for (int i = 0; i < 9; i++) {
-            if (turns[i].isExist() && turns[i].getType() == 0) {
-                points.addPoint(turns[i].getPosition());
+    public List<Point> getBadPoints() {
+        List<Point> points = new ArrayList<>();
+        for (Turn turn : turns) {
+            if (turn.isExist() && turn.getType() == 0) {
+                points.add(turn.getPosition());
             }
         }
         return points;

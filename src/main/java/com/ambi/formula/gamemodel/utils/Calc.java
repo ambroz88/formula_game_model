@@ -3,7 +3,6 @@ package com.ambi.formula.gamemodel.utils;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ambi.formula.gamemodel.TrackBuilder;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
@@ -103,24 +102,39 @@ public abstract class Calc {
     }
 
     /**
-     * This method finds the nearest point in Polyline to point last.
+     * This method finds the nearest point from the list of Points where the
+     * nearest one is calculated from the point 'sourcePoint'.
      *
-     * @param last is the point from which the distance is measure
-     * @param data is polyline where is searching the closest point
-     * @return the point from polyline (array 1) and it's position in polyline
-     * (array 0).
+     * @param sourcePoint is the point from which the distance is measure
+     * @param data is list of points where is searched the closest one
+     * @return the nearest point in the list
      */
-    public static List<Object> findNearest(Point last, Polyline data) {
+    public static Point findNearestPoint(Point sourcePoint, List<Point> data) {
         int minIndex = 0;
-        for (int i = 1; i < data.getLength(); i++) {
-            if (distance(last, data.getPoint(minIndex)) > distance(last, data.getPoint(i))) {
+        for (int i = 1; i < data.size(); i++) {
+            if (distance(sourcePoint, data.get(minIndex)) > distance(sourcePoint, data.get(i))) {
                 minIndex = i;
             }
         }
-        List<Object> result = new ArrayList<>();
-        result.add(minIndex);
-        result.add(data.getPoint(minIndex));
-        return result;
+        return data.get(minIndex);
+    }
+
+    /**
+     * This method finds position of the nearest point from the list of Points.
+     * The nearest one is calculated from the point 'sourcePoint'.
+     *
+     * @param sourcePoint is the point from which the distance is measure
+     * @param data is list of points where is searched the closest one
+     * @return the nearest point in the list
+     */
+    public static int findNearestIndex(Point sourcePoint, List<Point> data) {
+        int minIndex = 0;
+        for (int i = 1; i < data.size(); i++) {
+            if (distance(sourcePoint, data.get(minIndex)) > distance(sourcePoint, data.get(i))) {
+                minIndex = i;
+            }
+        }
+        return minIndex;
     }
 
     /**
@@ -246,7 +260,6 @@ public abstract class Calc {
         }
         return result;
     }
-
 
     public static Point rightAngle(Polyline edge, int side) {
         //kolmice z posledniho bodu vstupni usecky:

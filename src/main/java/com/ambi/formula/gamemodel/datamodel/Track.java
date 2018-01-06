@@ -3,8 +3,6 @@ package com.ambi.formula.gamemodel.datamodel;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.ambi.formula.gamemodel.utils.Calc;
-
 /**
  * This class represents track of the race. It is composed from two polylines
  * (left and right) and next two polylines are: start and finish line. During
@@ -16,7 +14,8 @@ import com.ambi.formula.gamemodel.utils.Calc;
 public class Track {
 
     public static int LEFT = 1, RIGHT = -1, LIMIT_DIST = 15, LIMIT_NEXT = 5;
-    private Polyline left, right, parallelLeft, parallelRight;
+    private Polyline left;
+    private Polyline right;
     private int leftIndex, rightIndex, leftWidth, rightWidth;
     private int maxWidth;
     private int maxHeight;
@@ -25,8 +24,6 @@ public class Track {
     public Track() {
         left = new Polyline(Polyline.POLYLINE);
         right = new Polyline(Polyline.POLYLINE);
-        parallelLeft = new Polyline(Polyline.POLYLINE);
-        parallelRight = new Polyline(Polyline.POLYLINE);
         leftIndex = 0;
         rightIndex = 0;
         maxWidth = 0;
@@ -44,14 +41,6 @@ public class Track {
         }
     }
 
-    public Polyline getParallelLine(int side) {
-        if (side == LEFT) {
-            return getParallelLeft();
-        } else {
-            return getParallelRight();
-        }
-    }
-
     public Polyline getOppLine(int side) {
         if (side == LEFT) {
             return getRight();
@@ -62,17 +51,8 @@ public class Track {
 
     public void addPoint(int side, Point point) {
         getLine(side).addPoint(point);
-        setReady((leftIndex == getLeft().getLength() - 1 && getLeft().getLength() > 1 && rightIndex >= getRight().getLength() - 4)
-                || (rightIndex == getRight().getLength() - 1 && getRight().getLength() > 1 && leftIndex >= getLeft().getLength() - 4));
+        calculateReady();
         checkMaximum(point);
-    }
-
-    public void addParallelPoint(int side, Point point) {
-        getParallelLine(side).addPoint(point);
-    }
-
-    public void addParallelPoint(int position, int side, Point point) {
-        getParallelLine(side).addPoint(position, point);
     }
 
     public void removeLastPoint(int side) {
@@ -89,6 +69,7 @@ public class Track {
                 }
             }
         }
+        calculateReady();
         calculateDimension();
     }
 
@@ -119,22 +100,6 @@ public class Track {
         this.right = right;
         rightIndex = getRight().getLength() - 1;
         rightWidth = 3;
-    }
-
-    public Polyline getParallelLeft() {
-        return parallelLeft;
-    }
-
-    public void setParallelLeft(Polyline parallelLeft) {
-        this.parallelLeft = parallelLeft;
-    }
-
-    public Polyline getParallelRight() {
-        return parallelRight;
-    }
-
-    public void setParallelRight(Polyline parallelRight) {
-        this.parallelRight = parallelRight;
     }
 
     /**
@@ -274,47 +239,48 @@ public class Track {
 
     //TODO: dokoncit drahu jak se slusi a patri
     public void finishIndexes() {
-        if (getLeft().getLength() - leftIndex >= getRight().getLength() - rightIndex) {
-            for (int l = leftIndex + 1; l < getLeft().getLength(); l++) {
-                Point actPoint = getLeft().getPoint(l);
-                double oldDist = 5000, dist;
-                int newIndex = rightIndex;
-                for (int r = newIndex; r < getRight().getLength(); r++) {
-                    dist = Calc.distance(actPoint, getRight().getPoint(r));
-                    if (dist <= oldDist) {
-                        oldDist = dist;
-                        newIndex = r;
-                    } else {
-                        break;
-                    }
-                }
-                if (newIndex != rightIndex) {
-                    rightIndex = newIndex;
-                }
-                leftIndex++;
-            }
-        } else {
-            for (int r = rightIndex + 1; r < getRight().getLength(); r++) {
-                Point actPoint = getRight().getPoint(r);
-                double oldDist = 5000, dist;
-                int newIndex = leftIndex;
-                for (int l = newIndex; l < getLeft().getLength(); l++) {
-                    dist = Calc.distance(actPoint, getLeft().getPoint(l));
-                    if (dist <= oldDist) {
-                        oldDist = dist;
-                        newIndex = l;
-                    } else {
-                        break;
-                    }
-                }
-                if (newIndex != leftIndex) {
-                    leftIndex = newIndex;
-                }
-                rightIndex++;
-            }
-        }
-//        leftIndex = left.getLength() - 1;
-//        rightIndex = right.getLength() - 1;
+//        if (getLeft().getLength() - leftIndex >= getRight().getLength() - rightIndex) {
+//            for (int l = leftIndex + 1; l < getLeft().getLength(); l++) {
+//                Point actPoint = getLeft().getPoint(l);
+//                double oldDist = 5000, dist;
+//                int newIndex = rightIndex;
+//                for (int r = newIndex; r < getRight().getLength(); r++) {
+//                    dist = Calc.distance(actPoint, getRight().getPoint(r));
+//                    if (dist <= oldDist) {
+//                        oldDist = dist;
+//                        newIndex = r;
+//                    } else {
+//                        break;
+//                    }
+//                }
+//                if (newIndex != rightIndex) {
+//                    rightIndex = newIndex;
+//                }
+//                leftIndex++;
+//            }
+//        } else {
+//            for (int r = rightIndex + 1; r < getRight().getLength(); r++) {
+//                Point actPoint = getRight().getPoint(r);
+//                double oldDist = 5000, dist;
+//                int newIndex = leftIndex;
+//                for (int l = newIndex; l < getLeft().getLength(); l++) {
+//                    dist = Calc.distance(actPoint, getLeft().getPoint(l));
+//                    if (dist <= oldDist) {
+//                        oldDist = dist;
+//                        newIndex = l;
+//                    } else {
+//                        break;
+//                    }
+//                }
+//                if (newIndex != leftIndex) {
+//                    leftIndex = newIndex;
+//                }
+//                rightIndex++;
+//            }
+//        }
+        leftIndex = left.getLength() - 1;
+        rightIndex = right.getLength() - 1;
+        setReady(true);
     }
 
     /**
@@ -342,15 +308,21 @@ public class Track {
     }
 
     public boolean isReadyForDraw() {
-        return getLeft().getLength() > 2 && getRight().getLength() > 2;
+        return leftIndex > getLeft().getLength() - 4 && rightIndex > getRight().getLength() - 4
+                && getLeft().getLength() > 1 && getRight().getLength() > 1;
     }
 
-    public boolean getReady() {
+    public boolean isReady() {
         return ready;
     }
 
-    public void setReady(boolean ready) {
+    private void setReady(boolean ready) {
         this.ready = ready;
+    }
+
+    private void calculateReady() {
+        setReady(leftIndex == getLeft().getLength() - 1 && getLeft().getLength() > 1
+                && rightIndex == getRight().getLength() - 1 && getRight().getLength() > 1);
     }
 
     /**
@@ -361,21 +333,22 @@ public class Track {
      * @param gridSize is size of the one square on the paper
      * @return 2-dimension array (2 rows) where row 0 means X and row 1 means Y
      */
-    public int[][] getTrack(int gridSize) {
-        int[] xPoints = new int[leftIndex + rightIndex + 2];
-        int[] yPoints = new int[leftIndex + rightIndex + 2];
-        for (int i = 0; i <= leftIndex; i++) {
-            xPoints[i] = (int) getLeft().getPoint(i).getX() * gridSize;
-            yPoints[i] = (int) getLeft().getPoint(i).getY() * gridSize;
+    public int[][] getCoordinates(int gridSize) {
+        int leftSize = getLeft().getLength();
+        int rightSize = getRight().getLength();
+        int[] xPoints = new int[leftSize + rightSize];
+        int[] yPoints = new int[leftSize + rightSize];
+        for (int i = 0; i < leftSize; i++) {
+            xPoints[i] = getLeft().getPoint(i).getX() * gridSize;
+            yPoints[i] = getLeft().getPoint(i).getY() * gridSize;
         }
-        for (int i = 0; i <= rightIndex; i++) {
+        for (int i = 0; i < rightSize; i++) {
             //right side has to be saved from the end to the start
-            int opIndex = rightIndex - i;
-            xPoints[leftIndex + i + 1] = (int) getRight().getPoint(opIndex).getX() * gridSize;
-            yPoints[leftIndex + i + 1] = (int) getRight().getPoint(opIndex).getY() * gridSize;
+            int opIndex = rightSize - 1 - i;
+            xPoints[leftSize + i] = getRight().getPoint(opIndex).getX() * gridSize;
+            yPoints[leftSize + i] = getRight().getPoint(opIndex).getY() * gridSize;
         }
-        int[][] track = {xPoints, yPoints};
-        return track;
+        return new int[][]{xPoints, yPoints};
     }
 
     public List<Polyline> getTrackLines() {
@@ -417,12 +390,18 @@ public class Track {
     public void reset() {
         left.clear();
         right.clear();
-        parallelLeft.clear();
-        parallelRight.clear();
         leftIndex = 0;
         rightIndex = 0;
         maxWidth = 0;
         maxHeight = 0;
+    }
+
+    public void setTrack(Track track) {
+        reset();
+        setLeft(track.getLine(Track.LEFT));
+        setRight(track.getLine(Track.RIGHT));
+        setReady(true);
+        calculateDimension();
     }
 
     public Track getTrack() {

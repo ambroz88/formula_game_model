@@ -24,17 +24,16 @@ public class CompSimul {
     }
 
     /**
-     * Metoda vytvori tah pocitace. Prochazi se dobre moznosti a vybere se ta,
-     * ktera ma nejvzdalenejsi kolizni prusecik. Prochazeni hran trati je
-     * postupne od startu k cili (stridani leve a prave). Metoda vraci bod, kam
-     * pocitac tahne
+     * Metoda vytvori tah pocitace. Prochazi se dobre moznosti a vybere se ta, ktera ma
+     * nejvzdalenejsi kolizni prusecik. Prochazeni hran trati je postupne od startu k cili (stridani
+     * leve a prave). Metoda vraci bod, kam pocitac tahne
      *
      * @return Point of next computer turn
      */
     public Point compTurn() {
-        f2 = model.getTurn().getFormula(2);
+        f2 = model.getTurnMaker().getFormula(2);
         List<Polyline> checkLines = model.getBuilder().getCheckLines();
-        int pointCount = model.getTurns().getPoints().getLength();
+        int pointCount = model.getTurnMaker().getTurns().getPoints().size();
         Point farestPoint = new Point();//bod s nejvzdalenejsi kolizi
         int minLimit = 5000;
 
@@ -44,7 +43,7 @@ public class CompSimul {
             double finishDist = minLimit;
             //________________ ZARAZENI JEDNE MOZNOSTI TAHU ___________________
             for (int i = 0; i < pointCount; i++) {
-                Point actPoint = model.getTurns().getPoints().getPoint(i);
+                Point actPoint = model.getTurnMaker().getTurns().getPoints().get(i);
                 //timto tahem protne pocitac cil:
                 if (actPoint.getPosition().equals(Point.FINISH)) {
                     farestPoint = actPoint;
@@ -100,25 +99,28 @@ public class CompSimul {
             if (farestPoint.isEqual(new Point())) {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
                 System.out.println("zadna moznost nevyhovuje");
-                farestPoint = (Point) Calc.findNearest(f2.getLast(), model.getTurns().getPoints()).get(1);
+                farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getPoints());
                 if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + 1))[0] != Calc.OUTSIDE) {
                     newIndex = trackIndex + 1;
                 }
             }
             trackIndex = newIndex;
         } else { //pocitac nema zadny dobry tah a boura
-            farestPoint = (Point) Calc.findNearest(f2.getLast(), model.getTurns().getBadPoints()).get(1);
+            farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getBadPoints());
         }
         return farestPoint;
     }
 
+    /**
+     * It calculates coordinations of point where formula stops in slower direction and finds out if
+     * this point is in front of the given segment or behind.
+     *
+     * @prev is last checkline which where passed
+     * @next is following non passed checkline
+     * @actPoint is point where computer wants to go
+     * @return true if computer will crash into the barier, false otherwise
+     */
     private boolean checkColision(Polyline prev, Polyline next, Point actPoint) {
-        /* Metoda vypocte souradnice bodu, na kterem formule zabrzdi v pomalejsim smeru
-         * a zjisti, zda to ubrzdi vcas pred krajnici.
-         * vstup: prev je posledni checkline, ktera byla projeta
-         *        next je nasledujici neprojeta checkline
-         *        actPoint je bod, kam by formule jela
-         * Metoda vraci true, pokud nastane kolize a formule to neubrzdi */
         boolean intersect = false;
         int moveX = f2.getSide(actPoint); //posun na ose X pri zabrzdeni o 1
         int moveY = f2.getSpeed(actPoint);//posun na ose Y pri zabrzdeni o 1
@@ -157,9 +159,14 @@ public class CompSimul {
         return intersect;
     }
 
+    /**
+     * It returns braking distance of computer when it will go to given point 'turn'. E.g. when
+     * actual speed is 5, then braking distance is 4+3+2 = 9.
+     *
+     * @param turn is point where computer wants to go
+     * @return approximation of braking distance
+     */
     private int brakingDist(Point turn) {
-        /* metoda vraci brzdnou drahu formule f2 pri tahu turn
-         * pri rychlosti 5 je brzdna draha = 4+3+2 = 9 */
         int dist = 0;
         int speed = f2.maxSpeed(turn);
         while (speed > 1) {
@@ -170,8 +177,8 @@ public class CompSimul {
     }
 
     /**
-     * Metoda pocita vzdalenosti ke dvema nasledujicim prujezdovym useckam a
-     * vzdalenost ke stredu mezi nimi.
+     * Metoda pocita vzdalenosti ke dvema nasledujicim prujezdovym useckam a vzdalenost ke stredu
+     * mezi nimi.
      *
      * @param actIndex index nejblizsi neprotnute checkLine
      * @param click bod, kam hrac jede s formuli
