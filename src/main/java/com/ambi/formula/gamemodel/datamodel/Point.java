@@ -1,8 +1,8 @@
 package com.ambi.formula.gamemodel.datamodel;
 
 /**
- * This class represent one point given by coordinate X and Y. The point has
- * also information about his position to track. It is good for special cases
+ * This class represent one point given by coordinate X and Y. The point has also information about
+ * his position to track. It is good for special cases
  * <b>e.g.</b> position on FINISH line.
  *
  * @author Jiri Ambroz
@@ -15,7 +15,7 @@ public class Point {
     public final static String FINISH = "finish";
     public final static String NORMAL = "normal";
 
-    private String position;
+    private String location;
     public double x, y;
 
     // =========== constructors ================
@@ -26,13 +26,13 @@ public class Point {
     public Point(double x, double y) {
         this.x = x;
         this.y = y;
-        position = NORMAL;
+        location = NORMAL;
     }
 
     public Point(Point p) {
         x = p.x;
         y = p.y;
-        position = p.getPosition();
+        location = p.getLocation();
     }
     //=======================================
 
@@ -60,8 +60,7 @@ public class Point {
     }
 
     /**
-     * This method checks this <code>point</code> has the same coordinates like
-     * point p.
+     * This method checks this <code>point</code> has the same coordinates like point p.
      *
      * @param p point which we want to check.
      * @return true if the points are the same. False if they are not.
@@ -76,17 +75,16 @@ public class Point {
     }
 
     /**
-     * This setter sets the position of this point
+     * This setter sets the location of this point
      *
-     * @param position could reach these values: leftCol, rightCol, FINISH,
-     * FINISH_LINE, NORMAL
+     * @param location could reach these values: leftCol, rightCol, FINISH, FINISH_LINE, NORMAL
      */
-    public void setPosition(String position) {
-        this.position = position;
+    public void setLocation(String location) {
+        this.location = location;
     }
 
-    public String getPosition() {
-        return position;
+    public String getLocation() {
+        return location;
     }
 
     @Override

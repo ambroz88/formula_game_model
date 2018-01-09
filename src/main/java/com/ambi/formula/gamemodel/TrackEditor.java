@@ -11,101 +11,91 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class TrackEditor extends Track {
 
-    private int indexLong;
-    private int indexShort;
+    private int movePointIndex;
+    private int side;
 
     public TrackEditor() {
     }
 
+    /**
+     * It finds out which point will be moved, resp it's side and position. Start and finish can't
+     * be moved.
+     *
+     * @param click is point where user clicked - potentional point that will be moved
+     * @return true if the point is part of the track
+     */
     public boolean clickOnTrack(Point click) {
-        //pri editaci bodu se urci, ktery bod se bude hybat
-        //kontrola, zda se kliklo na bod z leve krajnice
+        //check if player clicked on the point from left side of the track
         for (int i = 1; i < getLeft().getLength() - 1; i++) {
             if (click.isEqual(getLeft().getPoint(i))) {
-                indexLong = i;//zapamatovani si indexu meniciho se bodu na leve strane
+                movePointIndex = i;
+                side = Track.LEFT;
                 break;
             }
         }
-        //kontrola, zda se kliklo na bod z prave krajnice
-        if (indexLong == 0) {
+        if (movePointIndex == 0) {
+            //check if player clicked on the point from right side of the track
             for (int i = 1; i < getRight().getLength() - 1; i++) {
                 if (click.isEqual(getRight().getPoint(i))) {
-                    indexShort = i;//zapamatovani si indexu meniciho se bodu na prave strane
+                    movePointIndex = i;
+                    side = Track.RIGHT;
                     break;
                 }
             }
         }
 
-        return (indexLong > 0 || indexShort > 0);
+        return movePointIndex > 0;
     }
 
+    /**
+     * It validates if user moves the point in correct position so newly created segments don't have
+     * intersect with any other segments.
+     *
+     * @param click is point where user placed certain point of the track
+     * @return true if there is no intersection with the rest of the track, false otherwise
+     */
     public boolean isNewPointValid(Point click) {
-        //hledani mozneho pruseciku se zbytkem krajnice
-        boolean interRight = false; //premistovany bod z prave krajnice se nekrizi
-        boolean interLeft = false; //premistovany bod z leve krajnice se nekrizi
+        Point newEdgeStart = getLine(side).getPoint(movePointIndex - 1);
+        Point newEdgeEnd = getLine(side).getPoint(movePointIndex + 1);
+        // new segments can't cross start, finish or opposite side
+        boolean intersect = crossEndLines(newEdgeStart, newEdgeEnd, click)
+                || getOppLine(side).checkSegmentCrossing(newEdgeStart, click)
+                || getOppLine(side).checkSegmentCrossing(newEdgeEnd, click);
+        if (!intersect) {
+            // new segments can't cross it own side but it can touch it
+            for (int i = 0; i < getLine(side).getLength() - 1; i++) {
+                if (i < movePointIndex - 1 || i > movePointIndex) {
+                    Polyline actRight = getLine(side).getSegment(i);
+                    if ((int) Calc.crossing(click, newEdgeStart, actRight)[0] == Calc.INSIDE
+                            || (int) Calc.crossing(click, newEdgeEnd, actRight)[0] == Calc.INSIDE) {
+                        intersect = true;
+                    }
+                }
+            }
 
-        //-------- cyklus projde vsechny USECKY LEVE KRAJNICE: -------------
-        for (int i = 0; i < getLeft().getLength() - 1; i++) {
-            Polyline actLeft = getLeft().getSegment(i);
-            // ______ premistovany bod je z prave krajnice: ______
-            if (indexShort > 0) {
-                Point newEdge1 = getRight().getPoint(indexShort - 1);
-                Point newEdge2 = getRight().getPoint(indexShort + 1);
-                if ((int) Calc.crossing(click, newEdge1, actLeft)[0] != Calc.OUTSIDE
-                        || (int) Calc.crossing(click, newEdge2, actLeft)[0] != Calc.OUTSIDE) {
-                    interRight = true;
-                    break;
-                }
-            }
-            //______ premistovany bod je z leve krajnice: _______
-            // nesmi se krizit ani s ostatnimi body leve krajnice
-            if (indexLong > 0 && (i < indexLong - 1 || i > indexLong)) {
-                Point newEdge1 = getLeft().getPoint(indexLong - 1);
-                Point newEdge2 = getLeft().getPoint(indexLong + 1);
-                if ((int) Calc.crossing(click, newEdge1, actLeft)[0] == Calc.INSIDE
-                        || (int) Calc.crossing(click, newEdge2, actLeft)[0] == Calc.INSIDE) {
-                    interLeft = true;
-                }
-            }
-        }
-        //-------- cyklus projde vsechny USECKY PRAVE KRAJNICE: ------------
-        for (int i = 0; i < getRight().getLength() - 1; i++) {
-            Polyline actRight = getRight().getSegment(i);
-            //______ premistovany bod je z leve krajnice: _______
-            if (indexLong > 0) {
-                Point newEdge1 = getLeft().getPoint(indexLong - 1);
-                Point newEdge2 = getLeft().getPoint(indexLong + 1);
-                if ((int) Calc.crossing(click, newEdge1, actRight)[0] != Calc.OUTSIDE
-                        || (int) Calc.crossing(click, newEdge2, actRight)[0] != Calc.OUTSIDE) {
-                    interLeft = true;
-                    break;
-                }
-            }
-            // ______ premistovany bod je z prave krajnice: ______
-            // nesmi se krizit ani s ostatnimi body prave krajnice
-            if (indexShort > 0 && (i < (indexShort - 1) || i > (indexShort))) {
-                Point newEdge1 = getRight().getPoint(indexShort - 1);
-                Point newEdge2 = getRight().getPoint(indexShort + 1);
-                if ((int) Calc.crossing(click, newEdge1, actRight)[0] == Calc.INSIDE
-                        || (int) Calc.crossing(click, newEdge2, actRight)[0] == Calc.INSIDE) {
-                    interRight = true;
-                }
-            }
         }
 
-        boolean validPoint = true;
-        //vyhodnoceni pruseciku
-        if (indexShort > 0 && interRight == false) { //zadny prusecik praveho bodu se nenasel
-            getLine(RIGHT).changePoint(click, indexShort);
-        } else if (indexLong > 0 && interLeft == false) { //zadny prusecik leveho bodu se nenasel
-            getLine(LEFT).changePoint(click, indexLong);
-        } else if (interRight || interLeft) { //existuje prusecik
-            validPoint = false;
+        if (intersect == false) {
+            //overwrite point of the track
+            getLine(side).changePoint(click, movePointIndex);
         }
-
-        indexLong = 0;
-        indexShort = 0;
-        return validPoint;
+        movePointIndex = 0;
+        return !intersect;
     }
 
+    private boolean crossEndLines(Point edgeStart, Point edgeEnd, Point click) {
+        boolean intersect = false;
+        if (getStart() != null) {
+            if ((int) Calc.crossing(edgeStart, click, getStart())[0] == Calc.INSIDE
+                    || (int) Calc.crossing(edgeEnd, click, getStart())[0] == Calc.INSIDE) {
+                intersect = true;
+            } else if (getFinish() != null) {
+                if ((int) Calc.crossing(edgeStart, click, getFinish())[0] == Calc.INSIDE
+                        || (int) Calc.crossing(edgeEnd, click, getFinish())[0] == Calc.INSIDE) {
+                    intersect = true;
+                }
+            }
+        }
+        return intersect;
+    }
 }

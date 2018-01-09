@@ -22,24 +22,44 @@ public class Turns {
         return turns.length;
     }
 
-    public List<Point> getPoints() {
-        List<Point> points = new ArrayList<>();
+    public List<Point> getFreePoints() {
+        List<Point> freePoints = new ArrayList<>();
         for (Turn turn : turns) {
-            if (turn.isExist() && turn.getType() == 1) {
-                points.add(turn.getPosition());
+            if (turn.isExist() && turn.getType() == Turn.FREE) {
+                freePoints.add(turn.getPoint());
             }
         }
-        return points;
+        return freePoints;
     }
 
-    public List<Point> getBadPoints() {
-        List<Point> points = new ArrayList<>();
+    public List<Turn> getFreeTurns() {
+        List<Turn> freeTurns = new ArrayList<>();
         for (Turn turn : turns) {
-            if (turn.isExist() && turn.getType() == 0) {
-                points.add(turn.getPosition());
+            if (turn.isExist() && turn.getType() == Turn.FREE) {
+                freeTurns.add(turn);
             }
         }
-        return points;
+        return freeTurns;
+    }
+
+    public List<Point> getCollisionPoints() {
+        List<Point> collisionPoints = new ArrayList<>();
+        for (Turn turn : turns) {
+            if (turn.isExist() && turn.getType() == Turn.COLLISION) {
+                collisionPoints.add(turn.getPoint());
+            }
+        }
+        return collisionPoints;
+    }
+
+    public List<Turn> getCollisionTurns() {
+        List<Turn> collisionTurns = new ArrayList<>();
+        for (Turn turn : turns) {
+            if (turn.isExist() && turn.getType() == Turn.COLLISION) {
+                collisionTurns.add(turn);
+            }
+        }
+        return collisionTurns;
     }
 
     public Turn getTurn(int pos) {
@@ -60,23 +80,34 @@ public class Turns {
 
     public class Turn {
 
-        private Point position;
+        public static final int FREE = 1;
+        public static final int COLLISION = 0;
+        private Point point;
+        private Point collision;
         private int type; //0 is bad, 1 is good
         private boolean exist;
 
         public Turn() {
-            position = new Point();
-            type = 1;
+            point = new Point();
+            type = FREE;
             exist = true;
         }
 
-        public Point getPosition() {
-            return position;
+        public Point getPoint() {
+            return point;
         }
 
-        public void setPosition(Point position) {
-            this.position = position;
+        public void setPoint(Point point) {
+            this.point = point;
             setExist(true);
+        }
+
+        public Point getCollision() {
+            return collision;
+        }
+
+        public void setCollision(Point collision) {
+            this.collision = collision;
         }
 
         public int getType() {

@@ -8,6 +8,7 @@ import com.ambi.formula.gamemodel.datamodel.Paper;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.labels.HintLabels;
+import com.ambi.formula.gamemodel.track.TrackAnalyzer;
 import com.ambi.formula.gamemodel.utils.TrackIO;
 
 /**
@@ -30,6 +31,7 @@ public class GameModel {
 
     private final CompSimul computer;
     private final TrackBuilder buildTrack;
+    private final TrackAnalyzer analyzer;
     private final MakeTurn turnMaker;
     private final Paper paper;
     private final PropertyChangeSupport prop;
@@ -41,8 +43,9 @@ public class GameModel {
     private int player;
 
     public GameModel() {
-        stage = 1;
+        stage = BUILD_LEFT;
         paper = new Paper();
+        analyzer = new TrackAnalyzer();
 
         prop = new PropertyChangeSupport(this);
 
@@ -84,7 +87,7 @@ public class GameModel {
     public void keyPressed(int position) {
         //phase of the race
         if (getStage() > FIRST_TURN && getStage() <= AUTO_FINISH && getTurnMaker().getTurns().getTurn(position).isExist()) {
-            Point click = getTurnMaker().getTurns().getTurn(position).getPosition();
+            Point click = getTurnMaker().getTurns().getTurn(position).getPoint();
             processPlayerTurn(click);
             repaintScene();
         }
@@ -94,7 +97,7 @@ public class GameModel {
         turnMaker.turn(click);
         checkWinner();
         //SINGLE mode
-        if (player == 1 && turnMaker.getActID() == 2 && getStage() != FIRST_TURN) {
+        if (player == 1 && turnMaker.getActID() == 2 && getStage() != FIRST_TURN && getStage() != GAME_OVER) {
             //computer turn
             click = computer.compTurn();
             turnMaker.turn(click);
@@ -154,7 +157,7 @@ public class GameModel {
         if (playerCount == 1) { //single mode
             computer.setTrackIndex(0);
         }
-        buildTrack.analyzeTrack();
+        getAnalyzer().analyzeTrack(getBuilder().getTrack());
         resetPlayers();
         getBuilder().setPoints(turnMaker.startPosition(buildTrack.getStart()));
         buildTrack.setLeftWidth(3);
@@ -174,8 +177,31 @@ public class GameModel {
     public void switchStart() {
         setStage(BUILD_LEFT);
         getBuilder().switchStart();
-        getBuilder().analyzeTrack();
+        getAnalyzer().analyzeTrack(getBuilder().getTrack());
         resetPlayers();
+    }
+
+    // ---------------- METHOD FROM TRACK MENU --------------------
+    public void startBuild(int side) {
+        if (getBuilder().getOppLine(side).getLength() != 1) {
+            repaintScene();
+            getBuilder().generateEndPoints(side);
+            if (side == Track.LEFT) {
+                setStage(GameModel.BUILD_LEFT);
+            } else {
+                setStage(GameModel.BUILD_RIGHT);
+            }
+        } else {
+            if (side == Track.LEFT) {
+                fireHint(HintLabels.RIGHT_SIDE_FIRST);
+                //caught by TrackMenu:
+                firePropertyChange("rightSide", false, true);
+            } else {
+                fireHint(HintLabels.LEFT_SIDE_FIRST);
+                //caught by TrackMenu:
+                firePropertyChange("leftSide", false, true);
+            }
+        }
     }
 
     public boolean saveTrack(String trackName) {
@@ -197,7 +223,7 @@ public class GameModel {
         setStage(BUILD_LEFT);
         firePropertyChange("buildTrack", false, true); // cought by TrackMenu
         firePropertyChange("startDraw", false, true); // cought by TrackMenu and Draw
-        getBuilder().getCheckLines().clear();
+        getAnalyzer().clearLines();
         resetPlayers();
     }
 
@@ -211,12 +237,21 @@ public class GameModel {
     }
 
     /**
+     * It prepares track for editing mode, so all points in track will be visibly marked.
+     */
+    public void clearTrackInside() {
+        getAnalyzer().clearLines();
+        getBuilder().getPoints().clear();
+        setStage(EDIT_PRESS);
+    }
+
+    /**
      * Method for clearing whole scene: track, formulas and points.
      */
     public void resetGame() {
         setStage(BUILD_LEFT);
         getBuilder().reset();
-        getBuilder().getCheckLines().clear();
+        getAnalyzer().clearLines();
         resetPlayers();
     }
 
@@ -233,9 +268,9 @@ public class GameModel {
     public void checkWinner() {
         if (turnMaker.getFormula(2).getWin() == true) {
             winnerAnnouncement();
-        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getFinishType() != MakeTurn.SECOND_CHANCE) {
+        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getFinishType() != MakeTurn.WIN_LAST_TURN) {
             winnerAnnouncement();
-        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getActID() == 2) {
+        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getActID() == 1) {
             winnerAnnouncement();
         }
     }
@@ -330,6 +365,10 @@ public class GameModel {
 
     public Paper getPaper() {
         return paper;
+    }
+
+    public TrackAnalyzer getAnalyzer() {
+        return analyzer;
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {

@@ -3,11 +3,12 @@ package com.ambi.formula.gamemodel.datamodel;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.ambi.formula.gamemodel.utils.Calc;
+
 /**
- * This class represents track of the race. It is composed from two polylines
- * (left and right) and next two polylines are: start and finish line. During
- * building the track there are recorded indexes of point (left and right) which
- * show where ends the last well placed track points.
+ * This class represents track of the race. It is composed from two polylines (left and right) and
+ * next two polylines are: start and finish line. During building the track there are recorded
+ * indexes of point (left and right) which show where ends the last well placed track points.
  *
  * @author Jiri Ambroz
  */
@@ -71,6 +72,28 @@ public class Track {
         }
         calculateReady();
         calculateDimension();
+    }
+
+    /**
+     * Metoda najde ve vstupni polylinii "edge" index bodu, ktery je nejblizsi od vstupniho bodu
+     * last. Hledani ve vstupni linii je vymezeno dolnim a hornim indexem (min a max).
+     *
+     * @param edge - polylinie, ve ktere se hleda nejblizsi bod
+     * @param min - dolni mez, od ktere se hleda nejblizsi bod
+     * @param max - horni mez, ke ktere se hleda nejblizsi bod
+     * @return - index nejblizsiho bodu
+     */
+    public int findNearest(Polyline edge, int min, int max) {
+        Point last = edge.getLast();
+        int index = min;
+        for (int i = min + 1; i <= max; i++) {
+            Point actPoint = getShort().getPoint(i);
+            if (Calc.distance(last, getShort().getPoint(index)) > Calc.distance(last, actPoint)
+                    && Calc.sidePosition(actPoint, edge) == getShortStr()) {
+                index = i;
+            }
+        }
+        return index;
     }
 
     public void calculateDimension() {
@@ -143,8 +166,7 @@ public class Track {
     }
 
     /**
-     * This method selects shorter side of the track when it is prepare for
-     * race.
+     * This method selects shorter side of the track when it is prepare for race.
      *
      * @return shorter polyline
      */
@@ -182,11 +204,10 @@ public class Track {
     }
 
     /**
-     * This method returns actual index of well placed point to the track. You
-     * have to specify in which side you are interested.
+     * This method returns actual index of well placed point to the track. You have to specify in
+     * which side you are interested.
      *
-     * @param side is String of side where you want to find index (right or
-     * left)
+     * @param side is String of side where you want to find index (right or left)
      * @return left or right index
      */
     public int getIndex(int side) {
@@ -284,27 +305,35 @@ public class Track {
     }
 
     /**
-     * This method returns two-points line which represents start line. Line
-     * always leads from left to right side.
+     * This method returns two-points line which represents start line. Line always leads from left
+     * to right side.
      *
-     * @return polyline of start
+     * @return polyline of start or null when one side is empty
      */
     public Polyline getStart() {
-        Point begin = getLeft().getPoint(0);
-        Point end = getRight().getPoint(0);
-        return new Polyline(begin, end);
+        Polyline start = null;
+        if (!getLeft().isEmpty() && !getRight().isEmpty()) {
+            Point begin = getLeft().getPoint(0);
+            Point end = getRight().getPoint(0);
+            start = new Polyline(begin, end);
+        }
+        return start;
     }
 
     /**
-     * This method returns two-points line which represents finish line. Line
-     * always leads from left to right side.
+     * This method returns two-points line which represents finish line. Line always leads from left
+     * to right side.
      *
-     * @return polyline of finish
+     * @return polyline of finish or null when one side is still empty
      */
     public Polyline getFinish() {
-        Point begin = getLeft().getLast();
-        Point end = getRight().getLast();
-        return new Polyline(begin, end);
+        Polyline finish = null;
+        if (!getLeft().isEmpty() && !getRight().isEmpty()) {
+            Point begin = getLeft().getLast();
+            Point end = getRight().getLast();
+            finish = new Polyline(begin, end);
+        }
+        return finish;
     }
 
     public boolean isReadyForDraw() {
@@ -326,9 +355,8 @@ public class Track {
     }
 
     /**
-     * This method returns coordinates X and Y of whole track in order: left
-     * side, right side from the end to the start. Also the length (in squares)
-     * of the left and right side is measured.
+     * This method returns coordinates X and Y of whole track in order: left side, right side from
+     * the end to the start. Also the length (in squares) of the left and right side is measured.
      *
      * @param gridSize is size of the one square on the paper
      * @return 2-dimension array (2 rows) where row 0 means X and row 1 means Y
@@ -373,8 +401,7 @@ public class Track {
     }
 
     /**
-     * This method change left side to right reverse side and right side change
-     * to left reverse.
+     * This method change left side to right reverse side and right side change to left reverse.
      */
     public void switchStart() {
         Polyline tempRight = new Polyline(getRight());

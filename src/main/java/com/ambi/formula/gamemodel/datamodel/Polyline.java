@@ -146,6 +146,10 @@ public class Polyline {
     }
 
     //===================== OTHER OPERATIONS =====================
+    public boolean isEmpty() {
+        return points.isEmpty();
+    }
+
     /**
      * This method controls if the point click is one of the point in polyline
      *

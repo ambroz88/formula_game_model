@@ -17,9 +17,9 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class MakeTurn {
 
-    public static final int COLLISION = 0;
-    public static final int FIRST_WIN = 1;
-    public static final int SECOND_CHANCE = 2;
+    public static final int WIN_COLLISION = 0;
+    public static final int WIN_FIRST = 1;
+    public static final int WIN_LAST_TURN = 2;
 
     public static final int FOUR_TURNS = 4;
     public static final int FIVE_TURNS = 5;
@@ -33,7 +33,6 @@ public class MakeTurn {
 
     private final GameModel model;
     private final HashMap<Integer, Formula> racers;
-    private final Polyline colPoints, interPoints;
     private Turns turns;
     private int actID;
     private int rivalID;
@@ -43,8 +42,6 @@ public class MakeTurn {
 
     public MakeTurn(GameModel menu) {
         this.model = menu;
-        colPoints = new Polyline(Polyline.CROSS_SET);
-        interPoints = new Polyline(Polyline.GOOD_SET);
         racers = new HashMap<>();
         racers.put(1, new Formula());
         racers.put(2, new Formula());
@@ -52,7 +49,7 @@ public class MakeTurn {
         actID = 1;
         rivalID = 2;
         lengthHist = LENGTH_MAX;
-        finishType = FIRST_WIN;
+        finishType = WIN_FIRST;
         turnsCount = FOUR_TURNS;
     }
 
@@ -73,24 +70,22 @@ public class MakeTurn {
             } // ------------------------ NORMALNI TAH HRACE ------------------------
             case GameModel.NORMAL_TURN: {
                 model.fireHint(HintLabels.EMPTY);
-                List<Point> points = getTurns().getPoints();
+                List<Turns.Turn> points = getTurns().getFreeTurns();
                 // prochazeni moznych tahu
                 for (int i = 0; i < points.size(); i++) {
                     //uzivatel klikl na jeden z moznych tahu:
-                    if (click.isEqual(points.get(i))) {
+                    if (click.isEqual(points.get(i).getPoint())) {
                         act.addPoint(click);
                         act.movesUp();
                         //hrac protne cilovou caru:
-                        if (points.get(i).getPosition().contains(Point.FINISH)
+                        if (points.get(i).getPoint().getLocation().contains(Point.FINISH)
                                 && Track.LEFT == Calc.sidePosition(click, model.getBuilder().getFinish())) {
                             //nastaveni informaci o jizde:
-                            System.out.println("interpoints size: " + interPoints.getLength());
-                            System.out.println("index of click point: " + i);
-                            act.lengthUp(act.getPreLast(), interPoints.getPoint(i));
+                            act.lengthUp(act.getPreLast(), points.get(i).getCollision());
                             act.setWin(true);//hrac je v cili
                             waitTurn(act, "interFinish");
                         }// hrac skonci svuj tah na cilove care
-                        else if (Point.FINISH_LINE.equals(points.get(i).getPosition())) {
+                        else if (Point.FINISH_LINE.equals(points.get(i).getPoint().getLocation())) {
                             //nastaveni informaci o vzdalenosti:
                             act.lengthUp();
                             waitTurn(act, "normal");
@@ -102,9 +97,9 @@ public class MakeTurn {
                     } // konec if kliknu na jeden z bodu points
                 }// konec prochazeni bezkoliznich moznosti
                 // ------------------- HRAC SE VYBOURAL --------------------------
-                for (int i = 0; i < getTurns().getBadPoints().size(); i++) {
+                for (int i = 0; i < getTurns().getCollisionTurns().size(); i++) {
                     //hrac 1 klikl na jeden z koliznich tahu:
-                    if (click.isEqual(getTurns().getBadPoints().get(i))) {
+                    if (click.isEqual(getTurns().getCollisionTurns().get(i).getPoint())) {
                         act.movesUp();
                         int maxSpeed = act.maxSpeed(click);
                         act.setWait(maxSpeed + 1);
@@ -112,9 +107,9 @@ public class MakeTurn {
                         //nastaveni poctu tahu hrace:
                         act.movesUp(maxSpeed);
                         //pridani pruseciku do tahu formule:
-                        act.addPoint(colPoints.getPoint(i));
+                        act.addPoint(getTurns().getCollisionTurns().get(i).getCollision());
                         act.lengthUp();
-                        if (getFinishType() == COLLISION) {//konec hry po kolizi
+                        if (getFinishType() == WIN_COLLISION) {//konec hry po kolizi
                             racers.get(rivalID).setWin(true);
                             model.winnerAnnouncement();
                         } else {
@@ -129,18 +124,18 @@ public class MakeTurn {
                 //vsechny spatne body jsou mimo okno = naraz
                 //existuje prusecik s krajnici a hrac boura:
                 act.movesUp();
-                int maxSpeed = act.maxSpeed(Calc.findNearestPoint(act.getLast(), getTurns().getBadPoints()));
+                int maxSpeed = act.maxSpeed(Calc.findNearestPoint(act.getLast(), getTurns().getCollisionPoints()));
                 act.setWait(maxSpeed + 1);
                 model.fireCrash(maxSpeed);
                 //nastaveni poctu tahu hrace:
                 act.movesUp(maxSpeed);
                 //pridani pruseciku do tahu formule:
-                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getBadPoints());//najde nejkratsi tah
-                act.addPoint(colPoints.getPoint(closestIndex));
+                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getCollisionPoints());//najde nejkratsi tah
+                act.addPoint(getTurns().getCollisionTurns().get(closestIndex).getCollision());
                 act.lengthUp();
                 //moznosti tahu:
                 model.setStage(GameModel.NORMAL_TURN);
-                if (getFinishType() == COLLISION) {//konec hry po kolizi
+                if (getFinishType() == WIN_COLLISION) {//konec hry po kolizi
                     racers.get(rivalID).setWin(true);
                     model.winnerAnnouncement();
                 } else {
@@ -152,9 +147,9 @@ public class MakeTurn {
             } //--------------- AUTOMATICKY TAH - PROJETI CILE ---------------------
             case GameModel.AUTO_FINISH: {
                 //vsechny dobre tahy nejsou videt - projeti startem:
-                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getPoints());
-                act.addPoint(Calc.findNearestPoint(act.getLast(), getTurns().getPoints()));
-                act.lengthUp(interPoints.getPoint(closestIndex), act.getPreLast());
+                int closestIndex = Calc.findNearestIndex(act.getLast(), getTurns().getFreePoints());
+                act.addPoint(Calc.findNearestPoint(act.getLast(), getTurns().getFreePoints()));
+                act.lengthUp(getTurns().getFreeTurns().get(closestIndex).getCollision(), act.getPreLast());
                 act.movesUp();
                 act.setWin(true);
                 if (getActID() == 1) {//pokud hraje prvni hrac, da jeste sanci souperi na posledni tah
@@ -213,8 +208,8 @@ public class MakeTurn {
         divideTurns(rivalLast);
 
         //kontrola, jestli se mozne tahy nenachazeji mimo viditelnou oblast
-        int turnLast = model.getPaper().outPaperNumber(getTurns().getPoints());//pocet moznosti koncici za cilem
-        int turnOut = model.getPaper().outPaperNumber(getTurns().getBadPoints());//pocet moznosti koncici narazem
+        int turnLast = model.getPaper().outPaperNumber(getTurns().getFreePoints());//pocet moznosti koncici za cilem
+        int turnOut = model.getPaper().outPaperNumber(getTurns().getCollisionPoints());//pocet moznosti koncici narazem
 
         //vsechny moznosti druheho hrace jsou mimo viditelnou oblast:
         // ----------------------- AUTOMATICKY TAH -------------------------
@@ -223,7 +218,7 @@ public class MakeTurn {
                 || (turnOut == NINE_TURNS && turnsCount == NINE_TURNS)) {//vsechny moznosti zpusobi naraz
             model.setStage(GameModel.AUTO_CRASH);
             model.fireHint(HintLabels.NEXT_CLOSE_TURN);
-        } else if (turnLast > 0 && turnLast == getTurns().getPoints().size()) {
+        } else if (turnLast > 0 && turnLast == getTurns().getFreePoints().size()) {
             //zadna dobra moznost neni videt - tah na nejblizsi
             model.setStage(GameModel.AUTO_FINISH);
             model.fireHint(HintLabels.NEXT_CLOSE_TURN);
@@ -247,8 +242,8 @@ public class MakeTurn {
         if (ux == 0) {
 
             //crash into vertical edge - for quadratic equation bellow it has no solution
-            if (Point.COLLISION_LEFT.equals(act.getLast().getPosition()) && uy > 0
-                    || Point.COLLISION_RIGHT.equals(act.getLast().getPosition()) && uy < 0) {
+            if (Point.COLLISION_LEFT.equals(act.getLast().getLocation()) && uy > 0
+                    || Point.COLLISION_RIGHT.equals(act.getLast().getLocation()) && uy < 0) {
                 crashCenter = new Point(act.getLast().getX() - 1, act.getLast().getY());
             } else {
                 crashCenter = new Point(act.getLast().getX() + 1, act.getLast().getY());
@@ -278,7 +273,7 @@ public class MakeTurn {
 
             Point inter1 = new Point(X1, Y1);
             Point inter2 = new Point(X2, Y2);
-            switch (act.getLast().getPosition()) {
+            switch (act.getLast().getLocation()) {
                 case Point.COLLISION_LEFT:
                     //novy stred musi byt vpravo od kolizni usecky
                     if (Track.RIGHT == Calc.sidePosition(inter1, act.getColision())) {
@@ -361,55 +356,55 @@ public class MakeTurn {
         turns = new Turns();
         // upper-LEFT corner
         if (!crashMode) {
-            turns.getTurn(0).setPosition(new Point(center.x - 1, center.y - 1));
+            turns.getTurn(0).setPoint(new Point(center.x - 1, center.y - 1));
         } else {
             turns.getTurn(0).setExist(false);
         }
         // upper center
         if (turnsCount == NINE_TURNS || crashMode) {
-            turns.getTurn(1).setPosition(new Point(center.x, center.y - 1));
+            turns.getTurn(1).setPoint(new Point(center.x, center.y - 1));
         } else {
             turns.getTurn(1).setExist(false);
         }
         // upper-RIGHT corner
         if (!crashMode) {
-            turns.getTurn(2).setPosition(new Point(center.x + 1, center.y - 1));
+            turns.getTurn(2).setPoint(new Point(center.x + 1, center.y - 1));
         } else {
             turns.getTurn(2).setExist(false);
         }
         // LEFT
         if (turnsCount == NINE_TURNS || crashMode) {
-            turns.getTurn(3).setPosition(new Point(center.x - 1, center.y));
+            turns.getTurn(3).setPoint(new Point(center.x - 1, center.y));
         } else {
             turns.getTurn(3).setExist(false);
         }
         // center
         if (turnsCount == FIVE_TURNS || turnsCount == NINE_TURNS) {
-            turns.getTurn(4).setPosition(center);
+            turns.getTurn(4).setPoint(center);
         } else {
             turns.getTurn(4).setExist(false);
         }
         // RIGHT
         if (turnsCount == NINE_TURNS || crashMode) {
-            turns.getTurn(5).setPosition(new Point(center.x + 1, center.y));
+            turns.getTurn(5).setPoint(new Point(center.x + 1, center.y));
         } else {
             turns.getTurn(5).setExist(false);
         }
         // lower-LEFT corner
         if (!crashMode) {
-            turns.getTurn(6).setPosition(new Point(center.x - 1, center.y + 1));
+            turns.getTurn(6).setPoint(new Point(center.x - 1, center.y + 1));
         } else {
             turns.getTurn(6).setExist(false);
         }
         // lower center
         if (turnsCount == NINE_TURNS || crashMode) {
-            turns.getTurn(7).setPosition(new Point(center.x, center.y + 1));
+            turns.getTurn(7).setPoint(new Point(center.x, center.y + 1));
         } else {
             turns.getTurn(7).setExist(false);
         }
         // lower-RIGHT corner
         if (!crashMode) {
-            turns.getTurn(8).setPosition(new Point(center.x + 1, center.y + 1));
+            turns.getTurn(8).setPoint(new Point(center.x + 1, center.y + 1));
         } else {
             turns.getTurn(8).setExist(false);
         }
@@ -422,15 +417,13 @@ public class MakeTurn {
      * @param rivalLast is position of rival formula
      */
     private void divideTurns(Point rivalLast) {
-        colPoints.clear();
-        interPoints.clear();
         System.out.println("----------------");
         Formula act = racers.get(actID);
         Track track = model.getBuilder().getTrack();
         Polyline left = track.getLeft();
         Polyline right = track.getRight();
         for (int i = 0; i < turns.getSize(); i++) {
-            Point actPoint = turns.getTurn(i).getPosition();
+            Point actPoint = turns.getTurn(i).getPoint();
 
             if (actPoint.isEqual(rivalLast) == false && turns.getTurn(i).isExist()) {
                 boolean colision = false;
@@ -443,8 +436,8 @@ public class MakeTurn {
                         //novy bod ma prunik nebo se dotyka leve krajnice
                         colLine = actLeft;
                         Point colPoint = (Point) cross[1];
-                        colPoint.setPosition(Point.COLLISION_LEFT);
-                        colPoints.addPoint(colPoint);
+                        colPoint.setLocation(Point.COLLISION_LEFT);
+                        turns.getTurn(i).setCollision(colPoint);
                         colision = true;
                         break;
                     }
@@ -458,48 +451,49 @@ public class MakeTurn {
                             //novy bod ma prunik nebo se dotyka prave krajnice
                             colLine = actRight;
                             Point colPoint = (Point) cross[1];
-                            colPoint.setPosition(Point.COLLISION_RIGHT);
-                            colPoints.addPoint(colPoint);
+                            colPoint.setLocation(Point.COLLISION_RIGHT);
+                            turns.getTurn(i).setCollision(colPoint);
                             colision = true;
                             break;
                         }
                     }
                 }
-                if (colision == false) { //tah nekrizi zadnou krajnici
+                if (colision == false) {
+                    //tah nekrizi zadnou krajnici
                     Object[] start = Calc.crossing(act.getLast(), actPoint, track.getStart());
                     Object[] finish = Calc.crossing(act.getLast(), actPoint, track.getFinish());
                     if ((int) start[0] != Calc.OUTSIDE && Track.RIGHT == Calc.sidePosition(actPoint, track.getStart())) {
                         //tah protina start a konci vpravo od nej (projel se v protismeru)
                         colLine = track.getStart();
                         Point colPoint = (Point) start[1];
-                        colPoint.setPosition(Point.COLLISION_RIGHT);
-                        colPoints.addPoint(colPoint);
+                        colPoint.setLocation(Point.COLLISION_RIGHT);
+                        turns.getTurn(i).setCollision(colPoint);
                         colision = true;
-                    }//tah protina cilovou caru:
-                    else if ((int) finish[0] == Calc.INSIDE) {
-                        interPoints.addPoint((Point) finish[1]);
-                        actPoint.setPosition(Point.FINISH);
+                    } else if ((int) finish[0] == Calc.INSIDE) {
+                        //tah protina cilovou caru:
+                        turns.getTurn(i).setCollision((Point) finish[1]);
+                        actPoint.setLocation(Point.FINISH);
                         System.out.println("new interPoint - through finish");
-                    }//tah se dotyka cilove cary:
-                    else if ((int) finish[0] == Calc.EDGE) {
-                        interPoints.addPoint((Point) finish[1]);
-                        actPoint.setPosition(Point.FINISH_LINE);
+                    } else if ((int) finish[0] == Calc.EDGE) {
+                        //tah se dotyka cilove cary:
+                        turns.getTurn(i).setCollision((Point) finish[1]);
+                        actPoint.setLocation(Point.FINISH_LINE);
                         System.out.println("new interPoint - in finish line");
                     }
                 } else { //tah vede mimo trat
                     //kontrola zda hrac pred narazem projede cilem:
                     Object[] finish = Calc.crossing(act.getLast(), actPoint, track.getFinish());
                     if ((int) finish[0] != Calc.OUTSIDE && Calc.distance(act.getLast(), (Point) finish[1])
-                            < Calc.distance(act.getLast(), colPoints.getLast())) {
+                            < Calc.distance(act.getLast(), turns.getTurn(i).getCollision())) {
                         //hrac protne cil pred narazem
-                        interPoints.addPoint((Point) finish[1]);
+                        turns.getTurn(i).setCollision((Point) finish[1]);
                         System.out.println("new interPoint - in crashed after finish line");
-                        actPoint.setPosition(Point.FINISH);
+                        actPoint.setLocation(Point.FINISH);
                         colision = false;
                     }
                 }
                 if (colision) {
-                    turns.getTurn(i).setType(0);
+                    turns.getTurn(i).setType(Turns.Turn.COLLISION);
                     act.setColision(colLine);
                 }
             } else {

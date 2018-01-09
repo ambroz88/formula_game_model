@@ -32,8 +32,8 @@ public class CompSimul {
      */
     public Point compTurn() {
         f2 = model.getTurnMaker().getFormula(2);
-        List<Polyline> checkLines = model.getBuilder().getCheckLines();
-        int pointCount = model.getTurnMaker().getTurns().getPoints().size();
+        List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
+        int pointCount = model.getTurnMaker().getTurns().getFreePoints().size();
         Point farestPoint = new Point();//bod s nejvzdalenejsi kolizi
         int minLimit = 5000;
 
@@ -43,13 +43,13 @@ public class CompSimul {
             double finishDist = minLimit;
             //________________ ZARAZENI JEDNE MOZNOSTI TAHU ___________________
             for (int i = 0; i < pointCount; i++) {
-                Point actPoint = model.getTurnMaker().getTurns().getPoints().get(i);
+                Point actPoint = model.getTurnMaker().getTurns().getFreePoints().get(i);
                 //timto tahem protne pocitac cil:
-                if (actPoint.getPosition().equals(Point.FINISH)) {
+                if (actPoint.getLocation().equals(Point.FINISH)) {
                     farestPoint = actPoint;
                     break;
                 } //timto tahem pocitac skonci na cilove care:
-                else if (actPoint.getPosition().equals(Point.FINISH_LINE)) {
+                else if (actPoint.getLocation().equals(Point.FINISH_LINE)) {
                     finishDist = 0;//uprednostneni tohoto tahu pred tim, ktery by skoncil pred cilem
                     farestPoint = actPoint;
                 } //bezny tah pocitace nekde na trati:
@@ -99,14 +99,14 @@ public class CompSimul {
             if (farestPoint.isEqual(new Point())) {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
                 System.out.println("zadna moznost nevyhovuje");
-                farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getPoints());
+                farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getFreePoints());
                 if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + 1))[0] != Calc.OUTSIDE) {
                     newIndex = trackIndex + 1;
                 }
             }
             trackIndex = newIndex;
         } else { //pocitac nema zadny dobry tah a boura
-            farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getBadPoints());
+            farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
         }
         return farestPoint;
     }
