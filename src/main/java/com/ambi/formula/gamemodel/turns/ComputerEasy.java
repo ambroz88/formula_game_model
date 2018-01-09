@@ -1,4 +1,6 @@
-package com.ambi.formula.gamemodel;
+package com.ambi.formula.gamemodel.turns;
+
+import com.ambi.formula.gamemodel.GameModel;
 
 import java.util.List;
 
@@ -12,13 +14,13 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class CompSimul {
+public class ComputerEasy {
 
     private Formula f2;
     private final GameModel model;
     private int trackIndex;
 
-    public CompSimul(GameModel model) {
+    public ComputerEasy(GameModel model) {
         this.model = model;
         trackIndex = 0;
     }

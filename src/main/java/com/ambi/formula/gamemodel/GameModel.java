@@ -1,5 +1,9 @@
 package com.ambi.formula.gamemodel;
 
+import com.ambi.formula.gamemodel.turns.TurnMaker;
+import com.ambi.formula.gamemodel.turns.ComputerEasy;
+import com.ambi.formula.gamemodel.track.TrackBuilder;
+
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
@@ -29,10 +33,10 @@ public class GameModel {
     public final static int AUTO_FINISH = 8;
     public final static int GAME_OVER = 9;
 
-    private final CompSimul computer;
+    private final ComputerEasy computer;
     private final TrackBuilder buildTrack;
     private final TrackAnalyzer analyzer;
-    private final MakeTurn turnMaker;
+    private final TurnMaker turnMaker;
     private final Paper paper;
     private final PropertyChangeSupport prop;
 
@@ -50,8 +54,8 @@ public class GameModel {
         prop = new PropertyChangeSupport(this);
 
         buildTrack = new TrackBuilder(this);
-        turnMaker = new MakeTurn(this);
-        computer = new CompSimul(this);
+        turnMaker = new TurnMaker(this);
+        computer = new ComputerEasy(this);
     }
 
     // ========================== METHODS FROM GUI ===========================
@@ -268,7 +272,7 @@ public class GameModel {
     public void checkWinner() {
         if (turnMaker.getFormula(2).getWin() == true) {
             winnerAnnouncement();
-        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getFinishType() != MakeTurn.WIN_LAST_TURN) {
+        } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getFinishType() != TurnMaker.WIN_LAST_TURN) {
             winnerAnnouncement();
         } else if (turnMaker.getFormula(1).getWin() == true && turnMaker.getActID() == 1) {
             winnerAnnouncement();
@@ -355,7 +359,7 @@ public class GameModel {
         return hintLabels.getValue(hintLabelProperty);
     }
 
-    public MakeTurn getTurnMaker() {
+    public TurnMaker getTurnMaker() {
         return turnMaker;
     }
 

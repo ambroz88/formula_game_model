@@ -1,4 +1,6 @@
-package com.ambi.formula.gamemodel;
+package com.ambi.formula.gamemodel.turns;
+
+import com.ambi.formula.gamemodel.GameModel;
 
 import java.util.HashMap;
 import java.util.List;
@@ -15,7 +17,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class MakeTurn {
+public class TurnMaker {
 
     public static final int WIN_COLLISION = 0;
     public static final int WIN_FIRST = 1;
@@ -40,7 +42,7 @@ public class MakeTurn {
     private int turnsCount;
     private int lengthHist;
 
-    public MakeTurn(GameModel menu) {
+    public TurnMaker(GameModel menu) {
         this.model = menu;
         racers = new HashMap<>();
         racers.put(1, new Formula());

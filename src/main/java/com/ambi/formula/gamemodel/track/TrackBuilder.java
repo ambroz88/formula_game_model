@@ -1,5 +1,6 @@
-package com.ambi.formula.gamemodel;
+package com.ambi.formula.gamemodel.track;
 
+import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
