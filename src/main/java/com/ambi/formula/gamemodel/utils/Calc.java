@@ -6,10 +6,10 @@ import java.util.List;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Track;
+import com.ambi.formula.gamemodel.datamodel.Turns;
 
 /**
- * This is a class with different matematical operations and methods which are
- * static.
+ * This is a class with different matematical operations and methods which are static.
  *
  * @author Jiri Ambroz
  */
@@ -20,16 +20,15 @@ public abstract class Calc {
     public static final int INSIDE = 1;
 
     /**
-     * This method finds out if two segments have intersect. One segment is
-     * defined by two separated points. Second segment is defined by polyline.
-     * It doesn't matter on order.
+     * This method finds out if two segments have intersect. One segment is defined by two separated
+     * points. Second segment is defined by polyline. It doesn't matter on order.
      *
      * @param a is first point of first segment
      * @param b is second point of first segment
      * @param edge is second segment (polyline with length = 2)
-     * @return ArrayList of length 2. First value is Integer which means if
-     * there is intersect (1 for intersect, 0 for touch and -1 for no intersect.
-     * Second value in List is Point where is the intersect.
+     * @return ArrayList of length 2. First value is Integer which means if there is intersect (1
+     * for intersect, 0 for touch and -1 for no intersect. Second value in List is Point where is
+     * the intersect.
      */
     public static Object[] crossing(Point a, Point b, Polyline edge) {
         Point c = edge.getPreLast();
@@ -38,44 +37,77 @@ public abstract class Calc {
     }
 
     /**
-     * This method finds out if two segments have intersect. Both segments are
-     * defined by two separated points. It doesn't matter on direction of the
-     * segment.
+     * This method finds out if two segments have intersect. Both segments are defined by two
+     * separated points. It doesn't matter on direction of the segment.
      *
      * @param a is first point of first segment
      * @param b is second point of first segment
      * @param c is first point of second segment
      * @param d is second point of second segment
-     * @return ArrayList of length 2. First value is Integer which means if
-     * there is intersect (1 for intersect, 0 for touch and -1 for no intersect.
-     * Second value in List is Point where is the intersect.
+     * @return ArrayList of length 2. First value is Integer which means if there is intersect (1
+     * for intersect, 0 for touch and -1 for no intersect. Second value in List is Point where is
+     * the intersect.
      */
     public static Object[] crossing(Point a, Point b, Point c, Point d) {
         int intersect = OUTSIDE;
-        Point colPoint = new Point();
+        Point colPoint = calculateIntersect(a, b, c, d);
+
+        if (colPoint != null) {
+            if (pointPosition(a, b, colPoint) == INSIDE && pointPosition(c, d, colPoint) == INSIDE) {
+                //usecky se protinaji uvnitr
+                intersect = INSIDE;
+            } else if (pointPosition(a, b, colPoint) == EDGE && pointPosition(c, d, colPoint) == EDGE) {
+                //usecky se spolecne dotykaji v jednom konci
+                intersect = EDGE;
+            } else if ((pointPosition(a, b, colPoint) == EDGE && pointPosition(c, d, colPoint) == INSIDE)
+                    || (pointPosition(c, d, colPoint) == EDGE && pointPosition(a, b, colPoint) == INSIDE)) {
+                //konec jedne usecky se dotyka vnitrku druhe usecky
+                intersect = EDGE;
+            }
+        }
+        return new Object[]{intersect, colPoint};
+    }
+
+    public static Point crossingLineAndSegment(Polyline segment, Point lineStart, Point lineEnd) {
+        Point segmentStart = segment.getPreLast();
+        Point segmentEnd = segment.getLast();
+
+        Point colPoint = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
+        if (colPoint != null && pointPosition(segmentStart, segmentEnd, colPoint) == INSIDE
+                && isPointBehind(lineStart, lineEnd, colPoint)) {
+            //line intersects the segment
+            colPoint = null;
+        }
+        return colPoint;
+    }
+
+    public static Point collisionDistance(Point segmentStart, Point segmentEnd, Point lineStart, Point lineEnd) {
+        Point collision = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
+
+        if (collision != null && pointPosition(segmentStart, segmentEnd, collision) != INSIDE) {
+            //line intersects the segment
+            collision = null;
+        }
+
+        return collision;
+    }
+
+    private static Point calculateIntersect(Point a, Point b, Point c, Point d) {
+        Point colPoint = null;
 
         //t vychazi z parametrickeho vyjadreni primky
         double t = (a.x * d.y - a.x * c.y - c.x * d.y - d.x * a.y + d.x * c.y + c.x * a.y)
                 / ((d.x - c.x) * (b.y - a.y) - (b.x - a.x) * (d.y - c.y));
 
-        if (!Double.isInfinite(t)) { //kdyz usecky nejsou rovnobezne
-            // souradnice potencialniho pruseciku
-            double X = a.x + (b.x - a.x) * t;
-            double Y = a.y + (b.y - a.y) * t;
-            colPoint = new Point(X, Y); //cannot be rounded!!!
-            //usecky se protinaji uvnitr
-            if (pointPosition(a, b, colPoint) == 1 && pointPosition(c, d, colPoint) == 1) {
-                intersect = INSIDE;
-            } //usecky se spolecne dotykaji v jednom konci
-            else if (pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 0) {
-                intersect = EDGE;
-            } //konec jedne usecky se dotyka vnitrku druhe usecky
-            else if ((pointPosition(a, b, colPoint) == 0 && pointPosition(c, d, colPoint) == 1)
-                    || (pointPosition(c, d, colPoint) == 0 && pointPosition(a, b, colPoint) == 1)) {
-                intersect = EDGE;
-            }
+        if (!Double.isInfinite(t)) {
+            //segments are not parallel
+            double intersectX = a.x + (b.x - a.x) * t;
+            double intersectY = a.y + (b.y - a.y) * t;
+            //cannot be rounded!!!
+            colPoint = new Point(intersectX, intersectY);
         }
-        return new Object[]{intersect, colPoint};
+
+        return colPoint;
     }
 
     /**
@@ -84,8 +116,8 @@ public abstract class Calc {
      * @param a zacatecni bod usecky
      * @param b koncovy bod usecky
      * @param inter
-     * @return - hodnoty: 1 pro polohu uvnitr usecky, 0 pro polohu na kraji a -1
-     * kdyz lezi mimo usecku
+     * @return - hodnoty: 1 pro polohu uvnitr usecky, 0 pro polohu na kraji a -1 kdyz lezi mimo
+     * usecku
      */
     private static int pointPosition(Point a, Point b, Point inter) {
         double ix = inter.x;
@@ -101,9 +133,27 @@ public abstract class Calc {
         }
     }
 
+    private static boolean isPointBehind(Point lineStart, Point lineEnd, Point collision) {
+        boolean isBehind = false;
+        double deltaX = lineEnd.x - lineStart.x;
+        double deltaCollisionX = lineStart.x - collision.x;
+
+        if (deltaX > 0 && deltaCollisionX > 0 || deltaX < 0 && deltaCollisionX < 0) {
+            isBehind = true;
+        } else if (deltaX == 0 && deltaCollisionX == 0) {
+            double deltaY = lineEnd.y - lineStart.y;
+            double deltaCollisionY = lineStart.y - collision.y;
+            if (deltaY > 0 && deltaCollisionY > 0 || deltaY < 0 && deltaCollisionY < 0) {
+                isBehind = true;
+            }
+        }
+
+        return isBehind;
+    }
+
     /**
-     * This method finds the nearest point from the list of Points where the
-     * nearest one is calculated from the point 'sourcePoint'.
+     * This method finds the nearest point from the list of Points where the nearest one is
+     * calculated from the point 'sourcePoint'.
      *
      * @param sourcePoint is the point from which the distance is measure
      * @param data is list of points where is searched the closest one
@@ -120,8 +170,26 @@ public abstract class Calc {
     }
 
     /**
-     * This method finds position of the nearest point from the list of Points.
-     * The nearest one is calculated from the point 'sourcePoint'.
+     * This method finds the nearest point from the list of Points where the nearest one is
+     * calculated from the point 'sourcePoint'.
+     *
+     * @param sourcePoint is the point from which the distance is measure
+     * @param data is list of points where is searched the closest one
+     * @return the nearest point in the list
+     */
+    public static Point findNearestTurn(Point sourcePoint, List<Turns.Turn> data) {
+        int minIndex = 0;
+        for (int i = 1; i < data.size(); i++) {
+            if (distance(sourcePoint, data.get(minIndex).getPoint()) > distance(sourcePoint, data.get(i).getPoint())) {
+                minIndex = i;
+            }
+        }
+        return data.get(minIndex).getPoint();
+    }
+
+    /**
+     * This method finds position of the nearest point from the list of Points. The nearest one is
+     * calculated from the point 'sourcePoint'.
      *
      * @param sourcePoint is the point from which the distance is measure
      * @param data is list of points where is searched the closest one
@@ -138,14 +206,14 @@ public abstract class Calc {
     }
 
     /**
-     * This method create point in the angle axis which is given by tree points.
-     * It is possible to say on which side that point should be create.
+     * This method create point in the angle axis which is given by tree points. It is possible to
+     * say on which side that point should be create.
      *
      * @param prev is first point
      * @param mid is second point
      * @param next is third point
-     * @param side is side from polyline where new point should be created (1
-     * means left, 2 means right)
+     * @param side is side from polyline where new point should be created (1 means left, 2 means
+     * right)
      * @return point in the angle axis on given side from polyline
      */
     public static Point calculateAngle(Point prev, Point mid, Point next, int side) {
@@ -169,8 +237,8 @@ public abstract class Calc {
     }
 
     /**
-     * This method rotates one point around another point. Parameters of this
-     * rotation are: angle and new distance from center of rotation.
+     * This method rotates one point around another point. Parameters of this rotation are: angle
+     * and new distance from center of rotation.
      *
      * @param rotated is point which is rotated
      * @param center is central point of rotation
@@ -204,8 +272,7 @@ public abstract class Calc {
     }
 
     /**
-     * It computes coordinates of the base of altitude when there is point and
-     * segment.
+     * It computes coordinates of the base of altitude when there is point and segment.
      *
      * @param segment is two points line to which is searched the base
      * @param p is point from which leads the segment to base of altitude
@@ -284,8 +351,8 @@ public abstract class Calc {
     }
 
     /**
-     * Metoda zjisti, na jake strane lezi bod center od kolizni usecky. Poloha
-     * na usecce je zahrnuta do polohy vpravo.
+     * Metoda zjisti, na jake strane lezi bod center od kolizni usecky. Poloha na usecce je zahrnuta
+     * do polohy vpravo.
      *
      * @param center vstupni porovnavany bod
      * @param colLine kolizni usecka, od ktere se uvazuje poloha bodu

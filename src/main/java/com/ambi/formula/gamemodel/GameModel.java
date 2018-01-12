@@ -1,9 +1,5 @@
 package com.ambi.formula.gamemodel;
 
-import com.ambi.formula.gamemodel.turns.TurnMaker;
-import com.ambi.formula.gamemodel.turns.ComputerEasy;
-import com.ambi.formula.gamemodel.track.TrackBuilder;
-
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 import java.io.IOException;
@@ -13,6 +9,10 @@ import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.track.TrackAnalyzer;
+import com.ambi.formula.gamemodel.track.TrackBuilder;
+import com.ambi.formula.gamemodel.turns.ComputerModerate;
+import com.ambi.formula.gamemodel.turns.ComputerTurnInterface;
+import com.ambi.formula.gamemodel.turns.TurnMaker;
 import com.ambi.formula.gamemodel.utils.TrackIO;
 
 /**
@@ -33,7 +33,7 @@ public class GameModel {
     public final static int AUTO_FINISH = 8;
     public final static int GAME_OVER = 9;
 
-    private final ComputerEasy computer;
+    private final ComputerTurnInterface computer;
     private final TrackBuilder buildTrack;
     private final TrackAnalyzer analyzer;
     private final TurnMaker turnMaker;
@@ -55,7 +55,7 @@ public class GameModel {
 
         buildTrack = new TrackBuilder(this);
         turnMaker = new TurnMaker(this);
-        computer = new ComputerEasy(this);
+        computer = new ComputerModerate(this);
     }
 
     // ========================== METHODS FROM GUI ===========================
@@ -103,7 +103,7 @@ public class GameModel {
         //SINGLE mode
         if (player == 1 && turnMaker.getActID() == 2 && getStage() != FIRST_TURN && getStage() != GAME_OVER) {
             //computer turn
-            click = computer.compTurn();
+            click = computer.selectComputerTurn(2);
             turnMaker.turn(click);
             if (turnMaker.getActID() == 2) {
                 fireHint(HintLabels.NEXT_COMP_TURN);
@@ -159,7 +159,7 @@ public class GameModel {
      */
     public void prepareGame(int playerCount) {
         if (playerCount == 1) { //single mode
-            computer.setTrackIndex(0);
+            computer.startAgain();
         }
         getAnalyzer().analyzeTrack(getBuilder().getTrack());
         resetPlayers();

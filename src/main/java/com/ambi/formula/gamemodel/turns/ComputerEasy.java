@@ -1,9 +1,8 @@
 package com.ambi.formula.gamemodel.turns;
 
-import com.ambi.formula.gamemodel.GameModel;
-
 import java.util.List;
 
+import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Formula;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
@@ -14,15 +13,15 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class ComputerEasy {
+public class ComputerEasy implements ComputerTurnInterface {
 
     private Formula f2;
     private final GameModel model;
-    private int trackIndex;
+    private int checkLinesIndex;
 
     public ComputerEasy(GameModel model) {
         this.model = model;
-        trackIndex = 0;
+        checkLinesIndex = 0;
     }
 
     /**
@@ -30,17 +29,20 @@ public class ComputerEasy {
      * nejvzdalenejsi kolizni prusecik. Prochazeni hran trati je postupne od startu k cili (stridani
      * leve a prave). Metoda vraci bod, kam pocitac tahne
      *
+     * @param formulaPosition is position of computer in list of players / formulas
      * @return Point of next computer turn
      */
-    public Point compTurn() {
-        f2 = model.getTurnMaker().getFormula(2);
+    @Override
+    public Point selectComputerTurn(int formulaPosition) {
+        f2 = model.getTurnMaker().getFormula(formulaPosition);
         List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
         int pointCount = model.getTurnMaker().getTurns().getFreePoints().size();
-        Point farestPoint = new Point();//bod s nejvzdalenejsi kolizi
+        Point farestCollisionPoint = new Point();
         int minLimit = 5000;
 
-        if (pointCount > 0) { //pocitac ma alespon 1 dobry tah
-            int newIndex = trackIndex;
+        if (pointCount > 0) {
+            //computer has at least 1 clean turn
+            int newIndex = checkLinesIndex;
             double maxDist = 0;
             double finishDist = minLimit;
             //________________ ZARAZENI JEDNE MOZNOSTI TAHU ___________________
@@ -48,12 +50,12 @@ public class ComputerEasy {
                 Point actPoint = model.getTurnMaker().getTurns().getFreePoints().get(i);
                 //timto tahem protne pocitac cil:
                 if (actPoint.getLocation().equals(Point.FINISH)) {
-                    farestPoint = actPoint;
+                    farestCollisionPoint = actPoint;
                     break;
                 } //timto tahem pocitac skonci na cilove care:
                 else if (actPoint.getLocation().equals(Point.FINISH_LINE)) {
                     finishDist = 0;//uprednostneni tohoto tahu pred tim, ktery by skoncil pred cilem
-                    farestPoint = actPoint;
+                    farestCollisionPoint = actPoint;
                 } //bezny tah pocitace nekde na trati:
                 else if (finishDist == minLimit) {
                     boolean search = true;
@@ -61,7 +63,7 @@ public class ComputerEasy {
                     int k = 1;
                     int basic = 20;
                     while (search == true) {
-                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(trackIndex + k))[0] != Calc.OUTSIDE) {
+                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(checkLinesIndex + k))[0] != Calc.OUTSIDE) {
                             k++;
                             basic = basic + 20;
                         } else {
@@ -70,19 +72,19 @@ public class ComputerEasy {
                     }
                     //____________________________________________________________
                     //kontrola, zda dalsim tahem formule nenaboura do nejblizsi steny
-                    if (checkColision(checkLines.get(trackIndex + k - 1), checkLines.get(trackIndex + k), actPoint) == false) {
+                    if (checkColision(checkLines.get(checkLinesIndex + k - 1), checkLines.get(checkLinesIndex + k), actPoint) == false) {
                         //vzdalelnosti k pomocnym bodum na trati:
-                        double[] dist = lineDist(trackIndex + k, actPoint, checkLines);
+                        double[] dist = lineDist(checkLinesIndex + k, actPoint, checkLines);
                         //brzdna draha formule:
                         int breakDist = brakingDist(actPoint);
                         //kontrola, zda to ubrzdi do dalsi usecky, pokud ano, tak tam muze jet
-                        if (trackIndex + k == checkLines.size() - 1) {
+                        if (checkLinesIndex + k == checkLines.size() - 1) {
                             //pristi C H E C K L I N E  J E  C I L
                             if (basic - dist[2] > maxDist) {
                                 maxDist = basic - dist[2];
-                                farestPoint = actPoint;
-                                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + k - 1))[0] != Calc.OUTSIDE) {
-                                    newIndex = trackIndex + k - 1;
+                                farestCollisionPoint = actPoint;
+                                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(checkLinesIndex + k - 1))[0] != Calc.OUTSIDE) {
+                                    newIndex = checkLinesIndex + k - 1;
                                 }
                             }
                         } else {//nasledujici checkLine neni cil
@@ -90,27 +92,28 @@ public class ComputerEasy {
                                 //pocitac zabrzdi
                                 maxDist = basic - dist[2];
                                 if (k > 1) {
-                                    newIndex = trackIndex + k - 1;
+                                    newIndex = checkLinesIndex + k - 1;
                                 }
-                                farestPoint = actPoint;
+                                farestCollisionPoint = actPoint;
                             }
                         }
                     }//_________________________________________________________
                 }
             }
-            if (farestPoint.isEqual(new Point())) {
+            if (farestCollisionPoint.isEqual(new Point())) {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
                 System.out.println("zadna moznost nevyhovuje");
-                farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getFreePoints());
-                if ((int) Calc.crossing(f2.getLast(), farestPoint, checkLines.get(trackIndex + 1))[0] != Calc.OUTSIDE) {
-                    newIndex = trackIndex + 1;
+                farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getFreePoints());
+                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(checkLinesIndex + 1))[0] != Calc.OUTSIDE) {
+                    newIndex = checkLinesIndex + 1;
                 }
             }
-            trackIndex = newIndex;
-        } else { //pocitac nema zadny dobry tah a boura
-            farestPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
+            checkLinesIndex = newIndex;
+        } else {
+            //computer does not have other possibility then to crash
+            farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
         }
-        return farestPoint;
+        return farestCollisionPoint;
     }
 
     /**
@@ -241,8 +244,10 @@ public class ComputerEasy {
         }
     }
 
-    public void setTrackIndex(int trackIndex) {
-        this.trackIndex = trackIndex;
+    @Override
+    public void startAgain() {
+        this.checkLinesIndex = 0;
+
     }
 
 }
