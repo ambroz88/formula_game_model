@@ -5,7 +5,7 @@ import java.util.List;
 import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Formula;
 import com.ambi.formula.gamemodel.datamodel.Point;
-import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.utils.Calc;
 
 /**
@@ -13,15 +13,18 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class ComputerEasy implements ComputerTurnInterface {
+public class ComputerEasy extends ComputerTurnCore {
 
     private Formula f2;
     private final GameModel model;
-    private int checkLinesIndex;
 
     public ComputerEasy(GameModel model) {
         this.model = model;
-        checkLinesIndex = 0;
+    }
+
+    @Override
+    public void reset() {
+        setCheckLinesIndex(0);
     }
 
     /**
@@ -35,14 +38,14 @@ public class ComputerEasy implements ComputerTurnInterface {
     @Override
     public Point selectComputerTurn(int formulaPosition) {
         f2 = model.getTurnMaker().getFormula(formulaPosition);
-        List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
+        List<Segment> checkLines = model.getAnalyzer().getCheckLines();
         int pointCount = model.getTurnMaker().getTurns().getFreePoints().size();
         Point farestCollisionPoint = new Point();
         int minLimit = 5000;
 
         if (pointCount > 0) {
             //computer has at least 1 clean turn
-            int newIndex = checkLinesIndex;
+            int newIndex = getCheckLinesIndex();
             double maxDist = 0;
             double finishDist = minLimit;
             //________________ ZARAZENI JEDNE MOZNOSTI TAHU ___________________
@@ -63,7 +66,7 @@ public class ComputerEasy implements ComputerTurnInterface {
                     int k = 1;
                     int basic = 20;
                     while (search == true) {
-                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(checkLinesIndex + k))[0] != Calc.OUTSIDE) {
+                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(getCheckLinesIndex() + k))[0] != Calc.OUTSIDE) {
                             k++;
                             basic = basic + 20;
                         } else {
@@ -72,19 +75,19 @@ public class ComputerEasy implements ComputerTurnInterface {
                     }
                     //____________________________________________________________
                     //kontrola, zda dalsim tahem formule nenaboura do nejblizsi steny
-                    if (checkColision(checkLines.get(checkLinesIndex + k - 1), checkLines.get(checkLinesIndex + k), actPoint) == false) {
+                    if (checkColision(checkLines.get(getCheckLinesIndex() + k - 1), checkLines.get(getCheckLinesIndex() + k), actPoint) == false) {
                         //vzdalelnosti k pomocnym bodum na trati:
-                        double[] dist = lineDist(checkLinesIndex + k, actPoint, checkLines);
+                        double[] dist = lineDist(getCheckLinesIndex() + k, actPoint, checkLines);
                         //brzdna draha formule:
                         int breakDist = brakingDist(actPoint);
                         //kontrola, zda to ubrzdi do dalsi usecky, pokud ano, tak tam muze jet
-                        if (checkLinesIndex + k == checkLines.size() - 1) {
+                        if (getCheckLinesIndex() + k == checkLines.size() - 1) {
                             //pristi C H E C K L I N E  J E  C I L
                             if (basic - dist[2] > maxDist) {
                                 maxDist = basic - dist[2];
                                 farestCollisionPoint = actPoint;
-                                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(checkLinesIndex + k - 1))[0] != Calc.OUTSIDE) {
-                                    newIndex = checkLinesIndex + k - 1;
+                                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + k - 1))[0] != Calc.OUTSIDE) {
+                                    newIndex = getCheckLinesIndex() + k - 1;
                                 }
                             }
                         } else {//nasledujici checkLine neni cil
@@ -92,7 +95,7 @@ public class ComputerEasy implements ComputerTurnInterface {
                                 //pocitac zabrzdi
                                 maxDist = basic - dist[2];
                                 if (k > 1) {
-                                    newIndex = checkLinesIndex + k - 1;
+                                    newIndex = getCheckLinesIndex() + k - 1;
                                 }
                                 farestCollisionPoint = actPoint;
                             }
@@ -104,11 +107,11 @@ public class ComputerEasy implements ComputerTurnInterface {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
                 System.out.println("zadna moznost nevyhovuje");
                 farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getFreePoints());
-                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(checkLinesIndex + 1))[0] != Calc.OUTSIDE) {
-                    newIndex = checkLinesIndex + 1;
+                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + 1))[0] != Calc.OUTSIDE) {
+                    newIndex = getCheckLinesIndex() + 1;
                 }
             }
-            checkLinesIndex = newIndex;
+            setCheckLinesIndex(newIndex);
         } else {
             //computer does not have other possibility then to crash
             farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
@@ -125,7 +128,7 @@ public class ComputerEasy implements ComputerTurnInterface {
      * @actPoint is point where computer wants to go
      * @return true if computer will crash into the barier, false otherwise
      */
-    private boolean checkColision(Polyline prev, Polyline next, Point actPoint) {
+    private boolean checkColision(Segment prev, Segment next, Point actPoint) {
         boolean intersect = false;
         int moveX = f2.getSide(actPoint); //posun na ose X pri zabrzdeni o 1
         int moveY = f2.getSpeed(actPoint);//posun na ose Y pri zabrzdeni o 1
@@ -150,8 +153,8 @@ public class ComputerEasy implements ComputerTurnInterface {
         }
         intersect = false;
         //kontrola srazky s levou hranou:
-        if (prev.getPreLast().isEqual(next.getPreLast()) == false) {
-            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getPreLast(), next.getPreLast())[0] != Calc.OUTSIDE) {
+        if (prev.getFirst().isEqual(next.getFirst()) == false) {
+            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getFirst(), next.getFirst())[0] != Calc.OUTSIDE) {
                 intersect = true;
             }
         }
@@ -189,9 +192,9 @@ public class ComputerEasy implements ComputerTurnInterface {
      * @param click bod, kam hrac jede s formuli
      * @return
      */
-    private double[] lineDist(int actIndex, Point click, List<Polyline> checkLines) {
-        Polyline actLine = checkLines.get(actIndex);
-        Polyline nextLine;
+    private double[] lineDist(int actIndex, Point click, List<Segment> checkLines) {
+        Segment actLine = checkLines.get(actIndex);
+        Segment nextLine;
         if (actIndex + 1 > checkLines.size() - 1) {
             //nasledujici linie byla cil, takze dalsi by byla mimo rozsah
             nextLine = actLine;
@@ -201,7 +204,7 @@ public class ComputerEasy implements ComputerTurnInterface {
         Point mid1 = actLine.getMidPoint();
         Point mid2 = nextLine.getMidPoint();
         //prostredni bod mezi dvema nasledujicimi checkLines:
-        Point midPoint = new Polyline(mid1, mid2).getMidPoint();
+        Point midPoint = new Segment(mid1, mid2).getMidPoint();
         //prevladajici smer jizdy (side - smer X nebo speed - smer Y):
         String direct = f2.maxDirect(click);
         double midDist = Calc.distance(midPoint, click);
@@ -242,12 +245,6 @@ public class ComputerEasy implements ComputerTurnInterface {
             double[] result = {dist1, dist2, midDist};
             return result;
         }
-    }
-
-    @Override
-    public void startAgain() {
-        this.checkLinesIndex = 0;
-
     }
 
 }

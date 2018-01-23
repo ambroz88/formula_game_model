@@ -19,9 +19,8 @@ public class TrackUtils {
     public static final int NORTH_WEST = 8;
 
     /**
-     * <html>This method calculetes the code of direction kvadrant of segment
-     * which is given by two points. It depends on order of the segment.
-     * Possible directions:<br>
+     * <html>This method calculetes the code of direction kvadrant of segment which is given by two
+     * points. It depends on order of the segment. Possible directions:<br>
      * 1 = north 3 = east 5 = south 7 = west <br>
      * 2 = northeast 4 = southeast 6 = southwest 8 = northwest
      *
@@ -55,9 +54,8 @@ public class TrackUtils {
     }
 
     /**
-     * It calculates 5 points which lies horizontaly and verticaly from central
-     * point. Direction is based on octant which says if segment went to "north
-     * east", "south west" or "south" etc.
+     * It calculates 5 points which lies horizontaly and verticaly from central point. Direction is
+     * based on octant which says if segment went to "north east", "south west" or "south" etc.
      *
      * @param octant determines direction of the segment
      * @param centralPoint is point from which the calculations start
@@ -67,7 +65,7 @@ public class TrackUtils {
     public static Polyline generateGoalPoints(int octant, Point centralPoint, int side) {
 
         // NALEZENI KVADRANTU, KAM SMERUJE ZVOLENA USECKA
-        Polyline points = new Polyline(Polyline.GOOD_SET);
+        Polyline points = new Polyline();
         switch (octant) {
             case NORTH:
                 for (int i = 3; i < 8; i++) {

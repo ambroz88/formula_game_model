@@ -4,9 +4,8 @@ import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 
 /**
- * This class represents formula. It is polyline which has some special
- * functions and variables. In drawing this polyline has the arrows in each
- * point so it looks like a vector.
+ * This class represents formula. It is polyline which has some special functions and variables. In
+ * drawing this polyline has the arrows in each point so it looks like a vector.
  *
  * @author Jiri Ambroz
  */
@@ -16,7 +15,7 @@ public class Formula extends Polyline {
     public static final String FORWARD = "forward";
 
     private int speed, side, moves, wait;
-    private Polyline colLine; //two-points line to which this formula crashed
+    private Segment colLine; //two-points line to which this formula crashed
     private int rgbColor;
     private String name;
     private double length; //actual distance which formula took
@@ -24,7 +23,7 @@ public class Formula extends Polyline {
     private final PropertyChangeSupport prop;
 
     public Formula() {
-        super(POLYLINE);
+        super();
         speed = 1; //size of movement on axis Y
         side = 0; //size of movement on axis X
         winner = false;
@@ -88,8 +87,8 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method counts the size of vertical movement of this formula if it
-     * goes to <code>point turn</code>.
+     * This method counts the size of vertical movement of this formula if it goes to
+     * <code>point turn</code>.
      *
      * @param turn is point where the formula is going
      * @return number of grid squeres
@@ -107,8 +106,8 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method counts the size of horizontal movement of this formula if it
-     * goes to <code>point turn</code>.
+     * This method counts the size of horizontal movement of this formula if it goes to
+     * <code>point turn</code>.
      *
      * @param turn is point where the formula is going
      * @return number of grid squeres
@@ -132,8 +131,8 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method counts the maximum movement size of this formula if it goes
-     * to <code>point click</code>.
+     * This method counts the maximum movement size of this formula if it goes to
+     * <code>point click</code>.
      *
      * @param click is point where the formula is going
      * @return number of grid squeres
@@ -149,9 +148,25 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method finds out which movement direction would be more dominant if
-     * this formula would move to <code>point click</code>. If it is horizontal
-     * or vertical movement.
+     * This method counts the minimum movement size of this formula if it goes to
+     * <code>point click</code>.
+     *
+     * @param click is point where the formula is going
+     * @return number of grid squeres
+     */
+    public int minSpeed(Point click) {
+        int maxSpeed = Math.abs((int) (click.getY() - points.get(points.size() - 1).getY()));
+        int maxSide = Math.abs((int) (click.getX() - points.get(points.size() - 1).getX()));
+        if (maxSpeed < maxSide) {
+            return maxSpeed;
+        } else {
+            return maxSide;
+        }
+    }
+
+    /**
+     * This method finds out which movement direction would be more dominant if this formula would
+     * move to <code>point click</code>. If it is horizontal or vertical movement.
      *
      * @param click is possible movement point
      * @return String with dominant direction
@@ -166,7 +181,7 @@ public class Formula extends Polyline {
         }
     }
 
-    public void setColision(Polyline colLine) {
+    public void setColision(Segment colLine) {
         this.colLine = colLine;
     }
 
@@ -175,7 +190,7 @@ public class Formula extends Polyline {
      *
      * @return colision segment
      */
-    public Polyline getColision() {
+    public Segment getColision() {
         return colLine;
     }
 
@@ -212,8 +227,7 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method updates the distance of the formula about the distance
-     * between two last points.
+     * This method updates the distance of the formula about the distance between two last points.
      */
     public void lengthUp() {
         Point p1 = points.get(points.size() - 2);
@@ -226,9 +240,8 @@ public class Formula extends Polyline {
     }
 
     /**
-     * This method updates the distance of the formula about the distance
-     * between <code>point p1</code> and <code>point p2</code>. Distance is
-     * rounded to 2 decimals.
+     * This method updates the distance of the formula about the distance between
+     * <code>point p1</code> and <code>point p2</code>. Distance is rounded to 2 decimals.
      *
      * @param p1 first point
      * @param p2 second point

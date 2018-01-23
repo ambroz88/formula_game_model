@@ -1,8 +1,5 @@
 package com.ambi.formula.gamemodel.datamodel;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.ambi.formula.gamemodel.utils.Calc;
 
 /**
@@ -23,8 +20,8 @@ public class Track {
     private boolean ready;
 
     public Track() {
-        left = new Polyline(Polyline.POLYLINE);
-        right = new Polyline(Polyline.POLYLINE);
+        left = new Polyline();
+        right = new Polyline();
         leftIndex = 0;
         rightIndex = 0;
         maxWidth = 0;
@@ -83,7 +80,7 @@ public class Track {
      * @param max - horni mez, ke ktere se hleda nejblizsi bod
      * @return - index nejblizsiho bodu
      */
-    public int findNearest(Polyline edge, int min, int max) {
+    public int findNearest(Segment edge, int min, int max) {
         Point last = edge.getLast();
         int index = min;
         for (int i = min + 1; i <= max; i++) {
@@ -310,12 +307,12 @@ public class Track {
      *
      * @return polyline of start or null when one side is empty
      */
-    public Polyline getStart() {
-        Polyline start = null;
+    public Segment getStart() {
+        Segment start = null;
         if (!getLeft().isEmpty() && !getRight().isEmpty()) {
             Point begin = getLeft().getPoint(0);
             Point end = getRight().getPoint(0);
-            start = new Polyline(begin, end);
+            start = new Segment(begin, end);
         }
         return start;
     }
@@ -326,12 +323,12 @@ public class Track {
      *
      * @return polyline of finish or null when one side is still empty
      */
-    public Polyline getFinish() {
-        Polyline finish = null;
+    public Segment getFinish() {
+        Segment finish = null;
         if (!getLeft().isEmpty() && !getRight().isEmpty()) {
             Point begin = getLeft().getLast();
             Point end = getRight().getLast();
-            finish = new Polyline(begin, end);
+            finish = new Segment(begin, end);
         }
         return finish;
     }
@@ -377,23 +374,6 @@ public class Track {
             yPoints[leftSize + i] = getRight().getPoint(opIndex).getY() * gridSize;
         }
         return new int[][]{xPoints, yPoints};
-    }
-
-    public List<Polyline> getTrackLines() {
-        List<Polyline> lines = new ArrayList<>();
-        int length;
-        if (getLeft().getLength() <= getRight().getLength()) {
-            length = getLeft().getLength();
-        } else {
-            length = getRight().getLength();
-        }
-
-        Polyline line;
-        for (int i = 0; i < length; i++) {
-            line = new Polyline(getLeft().getPoint(i), getRight().getPoint(i));
-            lines.add(line);
-        }
-        return lines;
     }
 
     public boolean freeDrawing(int side, int oppSide) {

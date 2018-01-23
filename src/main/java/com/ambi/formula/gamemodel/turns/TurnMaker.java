@@ -1,13 +1,13 @@
 package com.ambi.formula.gamemodel.turns;
 
-import com.ambi.formula.gamemodel.GameModel;
-
 import java.util.HashMap;
 import java.util.List;
 
+import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Formula;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.labels.HintLabels;
@@ -235,11 +235,11 @@ public class TurnMaker {
     private void crashTurn() {
         Formula act = racers.get(actID);
         Point crashCenter = new Point();
-        Polyline collisionLine = act.getColision();
+        Segment collisionLine = act.getColision();
 
         //smerovy vektor kolizni usecky, ktery se vyuzije pro urceni kolmice
-        double ux = collisionLine.getLast().x - collisionLine.getPreLast().x;
-        double uy = collisionLine.getLast().y - collisionLine.getPreLast().y;
+        double ux = collisionLine.getLast().x - collisionLine.getFirst().x;
+        double uy = collisionLine.getLast().y - collisionLine.getFirst().y;
 
         if (ux == 0) {
 
@@ -429,10 +429,10 @@ public class TurnMaker {
 
             if (actPoint.isEqual(rivalLast) == false && turns.getTurn(i).isExist()) {
                 boolean colision = false;
-                Polyline colLine = new Polyline(Polyline.SEGMENT);
+                Segment colLine = null;
                 //----------- kontrola KOLIZE tahu s LEVOU STRANOU: -----------
                 for (int k = 0; k < left.getLength() - 1; k++) {
-                    Polyline actLeft = left.getSegment(k);
+                    Segment actLeft = left.getSegment(k);
                     Object[] cross = Calc.crossing(act.getLast(), actPoint, actLeft);
                     if ((int) cross[0] != Calc.OUTSIDE) {
                         //novy bod ma prunik nebo se dotyka leve krajnice
@@ -447,7 +447,7 @@ public class TurnMaker {
                 if (colision == false) { //tah nekrizi levou krajnici
                     // ---------- kontrola KOLIZE novych moznosti s PRAVOU STRANOU: -------------
                     for (int k = 0; k < right.getLength() - 1; k++) {
-                        Polyline actRight = right.getSegment(k);
+                        Segment actRight = right.getSegment(k);
                         Object[] cross = Calc.crossing(act.getLast(), actPoint, actRight);
                         if ((int) cross[0] != Calc.OUTSIDE) {
                             //novy bod ma prunik nebo se dotyka prave krajnice
@@ -504,10 +504,10 @@ public class TurnMaker {
         }
     }
 
-    public Polyline startPosition(Polyline startLine) {
+    public Polyline startPosition(Segment startLine) {
         //identifikace startovni cary
-        Polyline points = new Polyline(Polyline.GOOD_SET);
-        Point first = startLine.getPreLast();
+        Polyline points = new Polyline();
+        Point first = startLine.getFirst();
         Point second = startLine.getLast();
         if (first.x == second.x) { //startovni cara je vertikalni
             racers.get(1).setSpeed(0); //smer dopredu je v tomto pripade nulovy

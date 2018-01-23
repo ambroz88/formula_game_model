@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.ambi.formula.gamemodel.datamodel.Point;
-import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 
@@ -30,8 +30,8 @@ public abstract class Calc {
      * for intersect, 0 for touch and -1 for no intersect. Second value in List is Point where is
      * the intersect.
      */
-    public static Object[] crossing(Point a, Point b, Polyline edge) {
-        Point c = edge.getPreLast();
+    public static Object[] crossing(Point a, Point b, Segment edge) {
+        Point c = edge.getFirst();
         Point d = edge.getLast();
         return crossing(a, b, c, d);
     }
@@ -68,20 +68,22 @@ public abstract class Calc {
         return new Object[]{intersect, colPoint};
     }
 
-    public static Point crossingLineAndSegment(Polyline segment, Point lineStart, Point lineEnd) {
-        Point segmentStart = segment.getPreLast();
+    public static Point halfLineAndSegmentIntersection(Segment segment, Point lineStart, Point lineEnd) {
+        Point segmentStart = segment.getFirst();
         Point segmentEnd = segment.getLast();
 
         Point colPoint = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
-        if (colPoint != null && pointPosition(segmentStart, segmentEnd, colPoint) == INSIDE
-                && isPointBehind(lineStart, lineEnd, colPoint)) {
-            //line intersects the segment
-            colPoint = null;
+        if (colPoint != null) {
+            int intersectPosition = pointPosition(segmentStart, segmentEnd, colPoint);
+            if (intersectPosition == OUTSIDE || intersectPosition == INSIDE && isPointBehind(lineStart, lineEnd, colPoint)) {
+                //line intersects the segment
+                colPoint = null;
+            }
         }
         return colPoint;
     }
 
-    public static Point collisionDistance(Point segmentStart, Point segmentEnd, Point lineStart, Point lineEnd) {
+    public static Point calculateCollisionPoint(Point segmentStart, Point segmentEnd, Point lineStart, Point lineEnd) {
         Point collision = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
 
         if (collision != null && pointPosition(segmentStart, segmentEnd, collision) != INSIDE) {
@@ -135,17 +137,22 @@ public abstract class Calc {
 
     private static boolean isPointBehind(Point lineStart, Point lineEnd, Point collision) {
         boolean isBehind = false;
-        double deltaX = lineEnd.x - lineStart.x;
-        double deltaCollisionX = lineStart.x - collision.x;
+        if (!collision.isEqual(lineStart)) {
 
-        if (deltaX > 0 && deltaCollisionX > 0 || deltaX < 0 && deltaCollisionX < 0) {
-            isBehind = true;
-        } else if (deltaX == 0 && deltaCollisionX == 0) {
-            double deltaY = lineEnd.y - lineStart.y;
-            double deltaCollisionY = lineStart.y - collision.y;
-            if (deltaY > 0 && deltaCollisionY > 0 || deltaY < 0 && deltaCollisionY < 0) {
+            double deltaX = lineEnd.x - lineStart.x;
+            double deltaCollisionX = lineStart.x - collision.x;
+
+            if (deltaX > 0 && deltaCollisionX > 0 || deltaX < 0 && deltaCollisionX < 0) {
                 isBehind = true;
+            } else if (deltaX == 0 && deltaCollisionX == 0) {
+                double deltaY = lineEnd.y - lineStart.y;
+                double deltaCollisionY = lineStart.y - collision.y;
+                if (deltaY > 0 && deltaCollisionY > 0 || deltaY < 0 && deltaCollisionY < 0) {
+                    isBehind = true;
+                }
             }
+        } else {
+            isBehind = true;
         }
 
         return isBehind;
@@ -226,7 +233,7 @@ public abstract class Calc {
         } else {
             gamma = Math.acos((c * c - a * a - b * b) / (-2 * a * b));
         }
-        if (sidePosition(next, new Polyline(prev, mid)) != side) {
+        if (sidePosition(next, new Segment(prev, mid)) != side) {
             //subtrack angle from 180°
             gamma = 2 * Math.PI - gamma;
         }
@@ -261,10 +268,11 @@ public abstract class Calc {
      * @param segment is polyline with 2 points
      * @param p - distance of this point is calculated
      * @return distance in pixels
+     * @deprecated
      */
-    public static double distFromSegment(Polyline segment, Point p) {
-        Point a = segment.getPoint(0);
-        Point b = segment.getPoint(1);
+    public static double distFromSegment(Segment segment, Point p) {
+        Point a = segment.getFirst();
+        Point b = segment.getLast();
 
         double segmentLength = Math.sqrt(Math.pow(b.x - a.x, 2) + Math.pow(b.y - a.y, 2));
         double res = Math.abs((p.x - a.x) * (b.y - a.y) - (p.y - a.y) * (b.x - a.x)) / segmentLength;
@@ -278,9 +286,9 @@ public abstract class Calc {
      * @param p is point from which leads the segment to base of altitude
      * @return coordinates (Point) of base of altitude
      */
-    public static Point baseOfAltitude(Polyline segment, Point p) {
-        Point a = segment.getPoint(0);
-        Point b = segment.getPoint(1);
+    public static Point baseOfAltitude(Segment segment, Point p) {
+        Point a = segment.getFirst();
+        Point b = segment.getLast();
 
         double ux = b.x - a.x;
         double uy = b.y - a.y;
@@ -328,12 +336,16 @@ public abstract class Calc {
         return result;
     }
 
-    public static Point rightAngle(Polyline edge, int side) {
+    public static double calculateHypotenuse(int side, int speed) {
+        return Math.sqrt(side * side + speed * speed);
+    }
+
+    public static Point rightAngle(Segment edge, int side) {
         //kolmice z posledniho bodu vstupni usecky:
         Point start = edge.getLast();//z tohoto bodu bude spustena kolmice
         //smerovy vektor pro vychozi hranu na delsi strane:
-        double ux = edge.getPreLast().x - start.x;
-        double uy = edge.getPreLast().y - start.y;
+        double ux = edge.getFirst().x - start.x;
+        double uy = edge.getFirst().y - start.y;
         double nx;
         double ny;
         double t = 1000;
@@ -358,11 +370,11 @@ public abstract class Calc {
      * @param colLine kolizni usecka, od ktere se uvazuje poloha bodu
      * @return 1 if point si on the left or 2 if it is on the right
      */
-    public static int sidePosition(Point center, Polyline colLine) {
-        double ux = colLine.getLast().x - colLine.getPreLast().x;
-        double uy = colLine.getLast().y - colLine.getPreLast().y;
-        double vx = center.x - colLine.getPreLast().x;
-        double vy = center.y - colLine.getPreLast().y;
+    public static int sidePosition(Point center, Segment colLine) {
+        double ux = colLine.getLast().x - colLine.getFirst().x;
+        double uy = colLine.getLast().y - colLine.getFirst().y;
+        double vx = center.x - colLine.getFirst().x;
+        double vy = center.y - colLine.getFirst().y;
 
         double t = ux * vy - uy * vx; // skalarni soucin dvou vektoru
         if (t >= 0) {

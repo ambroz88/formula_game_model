@@ -87,7 +87,7 @@ public final class TrackIO {
 
             // load left barrier
             JSONArray leftSide = jsonObject.getJSONArray("left");
-            Polyline left = new Polyline(Polyline.POLYLINE);
+            Polyline left = new Polyline();
 
             for (Object pointObject : leftSide.toList()) {
                 coordinatesArray = (List) pointObject;
@@ -98,7 +98,7 @@ public final class TrackIO {
 
             // load right barrier
             JSONArray rightSide = jsonObject.getJSONArray("right");
-            Polyline right = new Polyline(Polyline.POLYLINE);
+            Polyline right = new Polyline();
 
             for (Object pointObject : rightSide.toList()) {
                 coordinatesArray = (List) pointObject;

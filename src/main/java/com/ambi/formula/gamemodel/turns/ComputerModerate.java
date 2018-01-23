@@ -5,7 +5,7 @@ import java.util.List;
 import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Formula;
 import com.ambi.formula.gamemodel.datamodel.Point;
-import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Turns;
 import com.ambi.formula.gamemodel.utils.Calc;
 
@@ -13,15 +13,20 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class ComputerModerate implements ComputerTurnInterface {
+public class ComputerModerate extends ComputerTurnCore {
 
     private Formula comp;
     private final GameModel model;
-    private int checkLinesIndex;
     private boolean sprint;
 
     public ComputerModerate(GameModel model) {
         this.model = model;
+        sprint = false;
+    }
+
+    @Override
+    public void reset() {
+        setCheckLinesIndex(0);
         sprint = false;
     }
 
@@ -34,6 +39,7 @@ public class ComputerModerate implements ComputerTurnInterface {
         if (!possibleTurns.isEmpty()) {
             if (possibleTurns.size() == 1) {
                 farestCollisionPoint = possibleTurns.get(0).getPoint();
+                correctLineIndex(farestCollisionPoint);
             } else {
                 //computer has more than clean turn
                 if (sprint) {
@@ -86,13 +92,15 @@ public class ComputerModerate implements ComputerTurnInterface {
 
             Point actPoint = possibleTurns.get(i).getPoint();
             crossedCount = calculateCrossedCheckLines(actPoint);
-            collision = calculateCollisionDistance(actPoint);
-            possibleTurns.get(i).setCollision(collision);
+            collision = calculateTrackCollision(actPoint);
+
             if (collision != null) {
+                possibleTurns.get(i).setCollision(collision);
                 collisionDistance = Calc.distance(collision, actPoint);
             } else {
                 collisionDistance = 0;
             }
+
             brakingDistance = calculateBreakingDistance(actPoint);
 
             if (collisionDistance > brakingDistance || collisionDistance == 0) {
@@ -107,8 +115,8 @@ public class ComputerModerate implements ComputerTurnInterface {
                         maxCount = crossedCount;
                         best = actPoint;
                     } else if (comp.maxSpeed(actPoint) == comp.maxSpeed(best)) {
-                        if (Calc.distance(actPoint, model.getAnalyzer().getCheckLines().get(checkLinesIndex + 1).getMidPoint())
-                                < Calc.distance(best, model.getAnalyzer().getCheckLines().get(checkLinesIndex + 1).getMidPoint())) {
+                        if (Calc.distance(actPoint, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + 1).getMidPoint())
+                                < Calc.distance(best, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + 1).getMidPoint())) {
                             maxCount = crossedCount;
                             best = actPoint;
                         }
@@ -126,9 +134,9 @@ public class ComputerModerate implements ComputerTurnInterface {
 
     private int calculateCrossedCheckLines(Point actPoint) {
         int count = 0;
-        List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
-        for (int i = checkLinesIndex + 1; i < checkLines.size(); i++) {
-            if (Calc.crossingLineAndSegment(checkLines.get(i), comp.getLast(), actPoint) != null) {
+        List<Segment> checkLines = model.getAnalyzer().getCheckLines();
+        for (int i = getCheckLinesIndex() + 1; i < checkLines.size(); i++) {
+            if (Calc.halfLineAndSegmentIntersection(checkLines.get(i), comp.getLast(), actPoint) != null) {
                 count++;
                 if (count == checkLines.size() - 1) {
                     sprint = true;
@@ -141,27 +149,26 @@ public class ComputerModerate implements ComputerTurnInterface {
         return count;
     }
 
-    private Point calculateCollisionDistance(Point actPoint) {
-        List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
-        Point distance = Calc.crossingLineAndSegment(checkLines.get(checkLinesIndex), comp.getLast(), actPoint);
-        if (distance == null) {
+    private Point calculateTrackCollision(Point actPoint) {
+        List<Segment> checkLines = model.getAnalyzer().getCheckLines();
+        Point collision = Calc.halfLineAndSegmentIntersection(checkLines.get(getCheckLinesIndex()), comp.getLast(), actPoint);
+        if (collision == null) {
 
-            for (int i = checkLinesIndex; i < checkLines.size() - 1; i++) {
-                distance = Calc.collisionDistance(checkLines.get(i).getPreLast(), checkLines.get(i + 1).getPreLast(), comp.getLast(), actPoint);
+            for (int i = getCheckLinesIndex(); i < checkLines.size() - 1; i++) {
+                collision = Calc.halfLineAndSegmentIntersection(new Segment(checkLines.get(i).getFirst(), checkLines.get(i + 1).getFirst()), comp.getLast(), actPoint);
 
-                if (distance == null) {
-                    distance = Calc.collisionDistance(checkLines.get(i).getLast(), checkLines.get(i + 1).getLast(), comp.getLast(), actPoint);
+                if (collision == null) {
+                    collision = Calc.halfLineAndSegmentIntersection(new Segment(checkLines.get(i).getLast(), checkLines.get(i + 1).getLast()), comp.getLast(), actPoint);
                 }
-                if (distance != null) {
+                if (collision != null) {
                     break;
                 }
             }
         } else {
-            distance = new Point(999, 999);
-            System.out.println("");
+            collision = new Point(actPoint);
         }
 
-        return distance;
+        return collision;
     }
 
     /**
@@ -172,34 +179,33 @@ public class ComputerModerate implements ComputerTurnInterface {
      * @return approximation of braking distance
      */
     private double calculateBreakingDistance(Point actPoint) {
-        int dist = 0;
-        int speed = comp.maxSpeed(actPoint);
-        while (speed > 1) {
+        double dist = 0;
+        int speed = comp.maxSpeed(actPoint) - 1;
+        int side = comp.minSpeed(actPoint) - 1;
+        while (speed > 0) {
+            dist = dist + Calc.calculateHypotenuse(side, speed);
             speed--;
-            dist = dist + speed;
+            if (side == 0) {
+                side++;
+            } else {
+                side--;
+            }
         }
         return dist;
     }
 
     private void correctLineIndex(Point best) {
-        List<Polyline> checkLines = model.getAnalyzer().getCheckLines();
-        int index = checkLinesIndex;
+        List<Segment> checkLines = model.getAnalyzer().getCheckLines();
+        int index = getCheckLinesIndex();
+
         for (int i = index + 1; i < checkLines.size(); i++) {
-            if (checkLines.get(i).checkSegmentCrossing(comp.getLast(), best)) {
-                checkLinesIndex++;
+            if ((int) Calc.crossing(comp.getLast(), best, checkLines.get(i))[0] != Calc.OUTSIDE) {
+                increaseIndex();
             } else {
                 break;
             }
         }
-//        if (index != checkLinesIndex) {
-//            checkLinesIndex--;
-//        }
-    }
 
-    @Override
-    public void startAgain() {
-        this.checkLinesIndex = 0;
-        sprint = false;
     }
 
 }

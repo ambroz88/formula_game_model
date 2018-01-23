@@ -2,6 +2,7 @@ package com.ambi.formula.gamemodel.datamodel;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -11,8 +12,8 @@ import java.util.List;
 public class Paper {
 
     private final PropertyChangeSupport prop;
-    private Polyline horizontal;
-    private Polyline vertical;
+    private List<Segment> horizontal;
+    private List<Segment> vertical;
     private int gridSize;
     private int width;
     private int height;
@@ -32,17 +33,15 @@ public class Paper {
      * It calculates two polylines which compose square paper.
      */
     private void updateGrid() {
-        vertical = new Polyline(Polyline.SEGMENT);
-        horizontal = new Polyline(Polyline.SEGMENT);
+        vertical = new ArrayList<>();
+        horizontal = new ArrayList<>();
         //create vertical lines of square paper
         for (int x = 0; x <= getWidth(); x++) {
-            vertical.addPoint(new Point(x, 0));
-            vertical.addPoint(new Point(x, getHeight()));
+            vertical.add(new Segment(new Point(x, 0), new Point(x, getHeight())));
         }
         //create horizontal lines of square paper
         for (int y = 0; y <= getHeight(); y++) {
-            horizontal.addPoint(new Point(0, y));
-            horizontal.addPoint(new Point(getWidth(), y));
+            vertical.add(new Segment(new Point(0, y), new Point(getWidth(), y)));
         }
     }
 
@@ -94,8 +93,7 @@ public class Paper {
     }
 
     /**
-     * It returns number of points, which are outside of the visible part of
-     * drawing window.
+     * It returns number of points, which are outside of the visible part of drawing window.
      *
      * @param data is set of points that will be tested
      * @return number of points outside of paper
@@ -111,11 +109,11 @@ public class Paper {
         return outBorder;
     }
 
-    public Polyline getHorizontalLines() {
+    public List<Segment> getHorizontalLines() {
         return horizontal;
     }
 
-    public Polyline getVerticalLines() {
+    public List<Segment> getVerticalLines() {
         return vertical;
     }
 

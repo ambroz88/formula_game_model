@@ -3,6 +3,7 @@ package com.ambi.formula.gamemodel.track;
 import com.ambi.formula.gamemodel.GameModel;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.utils.Calc;
@@ -23,7 +24,7 @@ public class TrackBuilder extends TrackEditor {
 
     public TrackBuilder(GameModel gModel) {
         this.model = gModel;
-        points = new Polyline(Polyline.GOOD_SET);
+        points = new Polyline();
     }
 
     /**
@@ -100,9 +101,9 @@ public class TrackBuilder extends TrackEditor {
     private boolean correctDirection(Polyline actLine, Point click) {
         //check bad direction of constructed side
         if (actLine.getLength() > 1) {
-            Polyline lastSegment = actLine.getLastSegment();
+            Segment lastSegment = actLine.getLastSegment();
             if (Calc.sidePosition(click, lastSegment) == oppSide
-                    && Calc.distance(lastSegment.getPoint(0), lastSegment.getPoint(1))
+                    && Calc.distance(lastSegment.getFirst(), lastSegment.getLast())
                     >= Calc.distance(actLine.getPreLast(), Calc.baseOfAltitude(lastSegment, click))) {
                 message = HintLabels.FORWARD;
                 return false;
@@ -151,7 +152,7 @@ public class TrackBuilder extends TrackEditor {
     private boolean buildSecondSide(Point click) {
         Polyline actLine = getLine(side);
         Polyline oppLine = getLine(oppSide);
-        Polyline trackEnd = new Polyline(actLine.getLast(), oppLine.getPoint(getIndex(oppSide)));
+        Segment trackEnd = new Segment(actLine.getLast(), oppLine.getPoint(getIndex(oppSide)));
         boolean success = true;
 
         if ((int) Calc.crossing(actLine.getLast(), click, getStart())[0] == Calc.INSIDE) {

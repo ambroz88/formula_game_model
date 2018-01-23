@@ -1,7 +1,7 @@
 package com.ambi.formula.gamemodel.track;
 
 import com.ambi.formula.gamemodel.datamodel.Point;
-import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.utils.Calc;
 
@@ -65,7 +65,7 @@ public class TrackEditor extends Track {
             // new segments can't cross it own side but it can touch it
             for (int i = 0; i < getLine(side).getLength() - 1; i++) {
                 if (i < movePointIndex - 1 || i > movePointIndex) {
-                    Polyline actRight = getLine(side).getSegment(i);
+                    Segment actRight = getLine(side).getSegment(i);
                     if ((int) Calc.crossing(click, newEdgeStart, actRight)[0] == Calc.INSIDE
                             || (int) Calc.crossing(click, newEdgeEnd, actRight)[0] == Calc.INSIDE) {
                         intersect = true;

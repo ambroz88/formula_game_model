@@ -5,6 +5,7 @@ import java.util.List;
 
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Polyline;
+import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.utils.Calc;
 
@@ -14,7 +15,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class TrackAnalyzer {
 
-    private List<Polyline> checkLines;
+    private List<Segment> checkLines;
 
     public TrackAnalyzer() {
         checkLines = new ArrayList<>();
@@ -40,7 +41,7 @@ public class TrackAnalyzer {
             int actIndex = lowIndex;
             boolean intersect = false;
             Point start = longSide.getPoint(k);//z tohoto bodu bude spustena kolmice
-            Polyline segment = longSide.getSegment(k - 1);
+            Segment segment = longSide.getSegment(k - 1);
             Point end = Calc.rightAngle(segment, track.getLongStr());
 
             // ------------------ PROCHAZENI KRATSI STRANY -------------------
@@ -76,9 +77,9 @@ public class TrackAnalyzer {
 
             Point opPoint = shortSide.getPoint(actIndex);
             if (track.getLongStr() == Track.LEFT) {
-                getCheckLines().add(new Polyline(start, opPoint));
+                getCheckLines().add(new Segment(start, opPoint));
             } else {
-                getCheckLines().add(new Polyline(opPoint, start));
+                getCheckLines().add(new Segment(opPoint, start));
             }
 
             //prirazeni bodu z delsi strany i pro vynechane body na kratsi strane
@@ -87,9 +88,9 @@ public class TrackAnalyzer {
                 start = Calc.findNearestPoint(opPoint, segment.getPoints());
                 //je zachovano poradi: prvni bod je na leve strane a druhy na prave:
                 if (track.getLongStr() == Track.LEFT) {
-                    getCheckLines().add(getCheckLines().size() - 1, new Polyline(start, opPoint));
+                    getCheckLines().add(getCheckLines().size() - 1, new Segment(start, opPoint));
                 } else {
-                    getCheckLines().add(getCheckLines().size() - 1, new Polyline(opPoint, start));
+                    getCheckLines().add(getCheckLines().size() - 1, new Segment(opPoint, start));
                 }
                 lowIndex++;
             }
@@ -103,9 +104,9 @@ public class TrackAnalyzer {
             Point opPoint = shortSide.getPoint(lowIndex);
             //je zachovano poradi: prvni bod je na leve strane a druhy na prave:
             if (track.getLongStr() == Track.LEFT) {
-                getCheckLines().add(new Polyline(start, opPoint));
+                getCheckLines().add(new Segment(start, opPoint));
             } else {
-                getCheckLines().add(new Polyline(opPoint, start));
+                getCheckLines().add(new Segment(opPoint, start));
             }
             lowIndex++;
         }
@@ -116,7 +117,7 @@ public class TrackAnalyzer {
         getCheckLines().clear();
     }
 
-    public List<Polyline> getCheckLines() {
+    public List<Segment> getCheckLines() {
         return checkLines;
     }
 }

@@ -1,8 +1,5 @@
 package com.ambi.formula.gamemodel.datamodel;
 
-import java.util.ArrayList;
-import java.util.List;
-
 import com.ambi.formula.gamemodel.utils.Calc;
 
 /**
@@ -11,33 +8,13 @@ import com.ambi.formula.gamemodel.utils.Calc;
  *
  * @author Jiri Ambroz
  */
-public class Polyline {
-
-    public static final int GOOD_SET = 0, CROSS_SET = 1, SEGMENT = 2, POLYLINE = 3;
-    private final int type;
-    protected List<Point> points;
+public class Polyline extends Segment {
 
     /**
      * Basic constructor which create empty polyline.
-     *
-     * @param type defines if it will be set of point, segment or polyline
      */
-    public Polyline(int type) {
-        this.type = type;
-        points = new ArrayList<>();
-    }
-
-    /**
-     * Constructor for creation line segment (two points).
-     *
-     * @param a is first point of line
-     * @param b is second point of line
-     */
-    public Polyline(Point a, Point b) {
-        points = new ArrayList<>();
-        points.add(new Point(a));
-        points.add(new Point(b));
-        type = SEGMENT;
+    public Polyline() {
+        super();
     }
 
     /**
@@ -46,11 +23,10 @@ public class Polyline {
      * @param poly
      */
     public Polyline(Polyline poly) {
-        this.points = new ArrayList<>();
+        super();
         for (Point p : poly.points) {
             this.points.add(new Point(p));
         }
-        type = poly.getType();
     }
 
     //=============== POINT OPERATIONS =================
@@ -93,13 +69,6 @@ public class Polyline {
         return points.get(index);
     }
 
-    public Point getLast() {
-        if (points.size() > 0) {
-            return points.get(getLength() - 1);
-        }
-        return null;
-    }
-
     public Point getPreLast() {
         if (points.size() > 1) {
             return points.get(getLength() - 2);
@@ -107,31 +76,11 @@ public class Polyline {
         return null;
     }
 
-    /**
-     * Method for counting coordinates of point in the middle of the first and last point in this
-     * polyline.
-     *
-     * @return point in the middle of polyline
-     */
-    public Point getMidPoint() {
-        if (this.getLength() > 1) {
-            double midX = (points.get(0).getX() + points.get(points.size() - 1).getX()) / 2;
-            double midY = (points.get(0).getY() + points.get(points.size() - 1).getY()) / 2;
-            return new Point((int) midX, (int) midY);
-        } else {
-            return null;
-        }
+    public Segment getSegment(int position) {
+        return new Segment(getPoint(position), getPoint(position + 1));
     }
 
-    public List<Point> getPoints() {
-        return points;
-    }
-
-    public Polyline getSegment(int position) {
-        return new Polyline(getPoint(position), getPoint(position + 1));
-    }
-
-    public Polyline getLastSegment() {
+    public Segment getLastSegment() {
         return getSegment(getLength() - 2);
     }
 
@@ -151,21 +100,6 @@ public class Polyline {
     }
 
     /**
-     * This method controls if the point click is one of the point in polyline
-     *
-     * @param click is <code>point</code> which is controlled
-     * @return true if the point is part of polyline and false if not
-     */
-    public boolean isInside(Point click) {
-        for (Point point : points) {
-            if (click.isEqual(point) == true) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
      * This method makes selection from polyline between two indexes.
      *
      * @param start is index of point where the selection starts
@@ -174,7 +108,7 @@ public class Polyline {
      */
     public Polyline choose(int start, int end) {
         if (start <= end && start < this.getLength() && end < this.getLength()) {
-            Polyline result = new Polyline(POLYLINE);
+            Polyline result = new Polyline();
             for (int i = start; i <= end; i++) {
                 result.addPoint(points.get(i));
             }
@@ -195,7 +129,7 @@ public class Polyline {
      * @return new polyline with opposite points order
      */
     public Polyline reverse() {
-        Polyline copy = new Polyline(POLYLINE);
+        Polyline copy = new Polyline();
         for (int i = points.size() - 1; i >= 0; i--) {
             copy.addPoint(points.get(i));
         }
@@ -244,20 +178,6 @@ public class Polyline {
             }
         }
         return false;
-    }
-
-    //=================== GETTERS ====================
-    public int getType() {
-        return type;
-    }
-
-    public int getLength() {
-        return points.size();
-    }
-
-    @Override
-    public String toString() {
-        return "size = " + points.size();
     }
 
 }

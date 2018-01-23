@@ -11,7 +11,7 @@ import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.track.TrackAnalyzer;
 import com.ambi.formula.gamemodel.track.TrackBuilder;
 import com.ambi.formula.gamemodel.turns.ComputerModerate;
-import com.ambi.formula.gamemodel.turns.ComputerTurnInterface;
+import com.ambi.formula.gamemodel.turns.ComputerTurnCore;
 import com.ambi.formula.gamemodel.turns.TurnMaker;
 import com.ambi.formula.gamemodel.utils.TrackIO;
 
@@ -33,7 +33,7 @@ public class GameModel {
     public final static int AUTO_FINISH = 8;
     public final static int GAME_OVER = 9;
 
-    private final ComputerTurnInterface computer;
+    private final ComputerTurnCore computer;
     private final TrackBuilder buildTrack;
     private final TrackAnalyzer analyzer;
     private final TurnMaker turnMaker;
@@ -56,6 +56,7 @@ public class GameModel {
         buildTrack = new TrackBuilder(this);
         turnMaker = new TurnMaker(this);
         computer = new ComputerModerate(this);
+//        computer = new ComputerEasy(this);
     }
 
     // ========================== METHODS FROM GUI ===========================
@@ -266,6 +267,7 @@ public class GameModel {
         turnMaker.getFormula(1).reset();
         turnMaker.getFormula(2).reset();
         getBuilder().getPoints().clear();
+        computer.reset();
         repaintScene();
     }
 
@@ -373,6 +375,10 @@ public class GameModel {
 
     public TrackAnalyzer getAnalyzer() {
         return analyzer;
+    }
+
+    public int getCheckLinesIndex() {
+        return computer.getCheckLinesIndex();
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {
