@@ -10,6 +10,8 @@ import com.ambi.formula.gamemodel.datamodel.Polyline;
 import com.ambi.formula.gamemodel.datamodel.Segment;
 import com.ambi.formula.gamemodel.datamodel.Track;
 import com.ambi.formula.gamemodel.datamodel.Turns;
+import com.ambi.formula.gamemodel.enums.FormulaType;
+import static com.ambi.formula.gamemodel.enums.FormulaType.Player;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.utils.Calc;
 
@@ -45,8 +47,8 @@ public class TurnMaker {
     public TurnMaker(GameModel menu) {
         this.model = menu;
         racers = new HashMap<>();
-        racers.put(1, new Formula());
-        racers.put(2, new Formula());
+        racers.put(1, new Formula(FormulaType.Player));
+        racers.put(2, new Formula(FormulaType.ComputerMedium));
         turns = new Turns();
         actID = 1;
         rivalID = 2;
@@ -597,6 +599,20 @@ public class TurnMaker {
 
     public Formula getFormula(int id) {
         return racers.get(id);
+    }
+
+    public FormulaType getComputerType() {
+        FormulaType type = null;
+        for (int key : racers.keySet()) {
+            if (racers.get(key).getType() != Player) {
+                type = racers.get(key).getType();
+                break;
+            }
+        }
+        if (type == null) {
+            type = FormulaType.Player;
+        }
+        return type;
     }
 
     public int getFormulaCount() {

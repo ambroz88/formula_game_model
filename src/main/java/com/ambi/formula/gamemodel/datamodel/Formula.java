@@ -3,6 +3,8 @@ package com.ambi.formula.gamemodel.datamodel;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
 
+import com.ambi.formula.gamemodel.enums.FormulaType;
+
 /**
  * This class represents formula. It is polyline which has some special functions and variables. In
  * drawing this polyline has the arrows in each point so it looks like a vector.
@@ -15,14 +17,15 @@ public class Formula extends Polyline {
     public static final String FORWARD = "forward";
 
     private int speed, side, moves, wait;
-    private Segment colLine; //two-points line to which this formula crashed
     private int rgbColor;
+    private FormulaType type;
+    private Segment colLine; //two-points line to which this formula crashed
     private String name;
     private double length; //actual distance which formula took
     private boolean winner;//is true when this formula finished the race
     private final PropertyChangeSupport prop;
 
-    public Formula() {
+    public Formula(FormulaType formulaType) {
         super();
         speed = 1; //size of movement on axis Y
         side = 0; //size of movement on axis X
@@ -30,6 +33,7 @@ public class Formula extends Polyline {
         moves = 1; //numbers of turns of this formula
         length = 1;
         wait = 0;
+        type = formulaType;
         prop = new PropertyChangeSupport(this); //every fire is cought by StatisticPanel
     }
 
@@ -48,6 +52,14 @@ public class Formula extends Polyline {
     @Override
     public void addPoint(Point p) {
         super.addPoint(p);
+    }
+
+    public FormulaType getType() {
+        return type;
+    }
+
+    public void setType(FormulaType type) {
+        this.type = type;
     }
 
     public int getColor() {

@@ -7,9 +7,11 @@ import java.io.IOException;
 import com.ambi.formula.gamemodel.datamodel.Paper;
 import com.ambi.formula.gamemodel.datamodel.Point;
 import com.ambi.formula.gamemodel.datamodel.Track;
+import com.ambi.formula.gamemodel.enums.FormulaType;
 import com.ambi.formula.gamemodel.labels.HintLabels;
 import com.ambi.formula.gamemodel.track.TrackAnalyzer;
 import com.ambi.formula.gamemodel.track.TrackBuilder;
+import com.ambi.formula.gamemodel.turns.ComputerEasy;
 import com.ambi.formula.gamemodel.turns.ComputerModerate;
 import com.ambi.formula.gamemodel.turns.ComputerTurnCore;
 import com.ambi.formula.gamemodel.turns.TurnMaker;
@@ -33,7 +35,7 @@ public class GameModel {
     public final static int AUTO_FINISH = 8;
     public final static int GAME_OVER = 9;
 
-    private final ComputerTurnCore computer;
+    private ComputerTurnCore computer;
     private final TrackBuilder buildTrack;
     private final TrackAnalyzer analyzer;
     private final TurnMaker turnMaker;
@@ -55,8 +57,6 @@ public class GameModel {
 
         buildTrack = new TrackBuilder(this);
         turnMaker = new TurnMaker(this);
-        computer = new ComputerModerate(this);
-//        computer = new ComputerEasy(this);
     }
 
     // ========================== METHODS FROM GUI ===========================
@@ -155,21 +155,28 @@ public class GameModel {
     /**
      * It prepares game for start - track is correctly drawn. When it is single mode, track is
      * analysed for computer turns.
-     *
-     * @param playerCount is number of players
      */
-    public void prepareGame(int playerCount) {
-        if (playerCount == 1) { //single mode
+    public void prepareGame() {
+        FormulaType computerLevel = turnMaker.getComputerType();
+        if (computerLevel != FormulaType.Player) { //single mode
+            if (computerLevel == FormulaType.ComputerEasy) {
+                computer = new ComputerEasy(this);
+            } else if (computerLevel == FormulaType.ComputerMedium) {
+                computer = new ComputerModerate(this);
+            }
             computer.startAgain();
+            player = 1;
+            getAnalyzer().analyzeTrack(getBuilder().getTrack());
+        } else {
+            player = 2;
         }
-        getAnalyzer().analyzeTrack(getBuilder().getTrack());
+
         resetPlayers();
         getBuilder().setPoints(turnMaker.startPosition(buildTrack.getStart()));
         buildTrack.setLeftWidth(3);
         buildTrack.setRightWidth(3);
 
         setStage(FIRST_TURN);
-        player = playerCount;
         turnMaker.setID(1, 2);   //it says which formula is on turn and which is second
         fireHint(HintLabels.START_POSITION);
         firePropertyChange("startGame", 0, turnMaker.getActID()); // cought by Draw and TrackMenu
@@ -267,7 +274,9 @@ public class GameModel {
         turnMaker.getFormula(1).reset();
         turnMaker.getFormula(2).reset();
         getBuilder().getPoints().clear();
-        computer.reset();
+        if (computer != null) {
+            computer.reset();
+        }
         repaintScene();
     }
 
@@ -378,7 +387,11 @@ public class GameModel {
     }
 
     public int getCheckLinesIndex() {
-        return computer.getCheckLinesIndex();
+        if (computer != null) {
+            return computer.getCheckLinesIndex();
+        } else {
+            return 0;
+        }
     }
 
     public void firePropertyChange(String prop, Object oldValue, Object newValue) {

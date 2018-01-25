@@ -11,18 +11,19 @@ import com.ambi.formula.gamemodel.utils.FileIO;
  *
  * @author Jiri Ambroz
  */
-public class StartMenuLabels {
+public class PrepareGameLabels {
 
-    public final static String START = "start";
-    public final static String START_GAME = "newGame";
-    public final static String START_AGAIN = "startAgain";
-    public final static String QUIT = "quit";
+    public final static String TITLE = "title";
+    public final static String PLAYER = "player";
+    public final static String COMPUTER_EASY = "computerEasy";
+    public final static String COMPUTER_MEDIUM = "computerMedium";
+    public final static String START_GAME = "startGame";
 
     private Properties properties;
 
-    public StartMenuLabels(String language) {
+    public PrepareGameLabels(String language) {
         try {
-            this.properties = FileIO.loadProperties(language + "/StartMenu.properties");
+            this.properties = FileIO.loadProperties(language + "/PrepareGame.properties");
         } catch (IOException ex) {
             Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
             this.properties = new Properties();
