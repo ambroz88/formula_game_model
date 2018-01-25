@@ -64,7 +64,7 @@ public class TurnMaker {
      * @param click is point where player clicked
      */
     public void turn(Point click) {
-        Formula act = racers.get(actID);
+        Formula act = racers.get(getActID());
 
         //--------------------- ZAHAJOVACI TAH --------------------------
         switch (model.getStage()) {
@@ -169,7 +169,7 @@ public class TurnMaker {
     }
 
     private void firstTurn(Point click) {
-        Formula act = racers.get(actID);
+        Formula act = racers.get(getActID());
         Polyline points = model.getBuilder().getPoints();
         for (int i = 0; i < points.getLength(); i++) {
             //uzivatel klikl na jeden z moznych tahu:
@@ -184,14 +184,21 @@ public class TurnMaker {
                     model.setStage(GameModel.NORMAL_TURN);
                     nextTurn(rivalID, act.getLast());
                 }
-                rivalTurns();
+                nextPlayer();
             }
         }
     }
 
-    public void rivalTurns() {
-        //metoda, ktera nastavi, ze je na rade souper
-        setID(rivalID, actID);
+    /**
+     * Method for increasing player.
+     */
+    public void nextPlayer() {
+        setID(actID + 1);
+        if (getActID() == 1) {
+            rivalID = 2;
+        } else {
+            rivalID = 1;
+        }
     }
 
     public void nextTurn(int formOnTurn, Point rivalLast) {
@@ -235,7 +242,7 @@ public class TurnMaker {
      * bod musi lezet na trati colision je bod, ve kterem doslo k vyjeti z trati.
      */
     private void crashTurn() {
-        Formula act = racers.get(actID);
+        Formula act = racers.get(getActID());
         Point crashCenter = new Point();
         Segment collisionLine = act.getColision();
 
@@ -311,13 +318,13 @@ public class TurnMaker {
         switch (rival.getWait()) {
             case 0:
                 //souper se nevyboural a hraje
-                rivalTurns();
-                nextTurn(actID, act.getLast());
+                nextPlayer();
+                nextTurn(getActID(), act.getLast());
                 break;
             case 1:
                 //souper udela prvni tah po narazu
                 rival.setWait(0);
-                rivalTurns();
+                nextPlayer();
                 crashTurn();
                 break;
             default:
@@ -332,7 +339,7 @@ public class TurnMaker {
                         if (rival.getWait() < act.getWait()) { //hrac 1 ceka dele
                             act.setWait(act.getWait() - rival.getWait() + 1);
                             rival.setWait(0);
-                            rivalTurns();
+                            nextPlayer();
                             crashTurn();
                         } else if (rival.getWait() > act.getWait()) { //hrac 2 ceka dele
                             crashTurn();
@@ -341,14 +348,14 @@ public class TurnMaker {
                         } else { //oba cekaji stejne dlouho - pokracuje hrac 2
                             act.setWait(1);
                             rival.setWait(0);
-                            rivalTurns();
+                            nextPlayer();
                             crashTurn();
                         }
                         break;
                     case "normal"://hrac na tahu udelal normalni tah
                         //souperi se snizi cekani a pokracuje hrac na tahu
                         rival.setWait(rival.getWait() - 1);
-                        nextTurn(actID, rival.getLast());
+                        nextTurn(getActID(), rival.getLast());
                         break;
                 }
                 break;
@@ -421,8 +428,7 @@ public class TurnMaker {
      * @param rivalLast is position of rival formula
      */
     private void divideTurns(Point rivalLast) {
-        System.out.println("----------------");
-        Formula act = racers.get(actID);
+        Formula act = racers.get(getActID());
         Track track = model.getBuilder().getTrack();
         Polyline left = track.getLeft();
         Polyline right = track.getRight();
@@ -477,12 +483,10 @@ public class TurnMaker {
                         //tah protina cilovou caru:
                         turns.getTurn(i).setCollision((Point) finish[1]);
                         actPoint.setLocation(Point.FINISH);
-                        System.out.println("new interPoint - through finish");
                     } else if ((int) finish[0] == Calc.EDGE) {
                         //tah se dotyka cilove cary:
                         turns.getTurn(i).setCollision((Point) finish[1]);
                         actPoint.setLocation(Point.FINISH_LINE);
-                        System.out.println("new interPoint - in finish line");
                     }
                 } else { //tah vede mimo trat
                     //kontrola zda hrac pred narazem projede cilem:
@@ -491,7 +495,6 @@ public class TurnMaker {
                             < Calc.distance(act.getLast(), turns.getTurn(i).getCollision())) {
                         //hrac protne cil pred narazem
                         turns.getTurn(i).setCollision((Point) finish[1]);
-                        System.out.println("new interPoint - in crashed after finish line");
                         actPoint.setLocation(Point.FINISH);
                         colision = false;
                     }
@@ -585,9 +588,12 @@ public class TurnMaker {
         return finishType;
     }
 
-    public void setID(int act, int rival) {
-        actID = act;
-        rivalID = rival;
+    public void setID(int act) {
+        if (act > racers.size()) {
+            actID = 1;
+        } else {
+            actID = act;
+        }
     }
 
     public int getActID() {

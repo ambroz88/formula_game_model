@@ -15,7 +15,7 @@ import com.ambi.formula.gamemodel.utils.Calc;
  */
 public class ComputerEasy extends ComputerTurnCore {
 
-    private Formula f2;
+    private Formula comp;
     private final GameModel model;
 
     public ComputerEasy(GameModel model) {
@@ -32,12 +32,11 @@ public class ComputerEasy extends ComputerTurnCore {
      * nejvzdalenejsi kolizni prusecik. Prochazeni hran trati je postupne od startu k cili (stridani
      * leve a prave). Metoda vraci bod, kam pocitac tahne
      *
-     * @param formulaPosition is position of computer in list of players / formulas
      * @return Point of next computer turn
      */
     @Override
-    public Point selectComputerTurn(int formulaPosition) {
-        f2 = model.getTurnMaker().getFormula(formulaPosition);
+    public Point selectComputerTurn() {
+        comp = model.getTurnMaker().getFormula(model.getTurnMaker().getActID());
         List<Segment> checkLines = model.getAnalyzer().getCheckLines();
         int pointCount = model.getTurnMaker().getTurns().getFreePoints().size();
         Point farestCollisionPoint = new Point();
@@ -66,7 +65,7 @@ public class ComputerEasy extends ComputerTurnCore {
                     int k = 1;
                     int basic = 20;
                     while (search == true) {
-                        if ((int) Calc.crossing(f2.getLast(), actPoint, checkLines.get(getCheckLinesIndex() + k))[0] != Calc.OUTSIDE) {
+                        if ((int) Calc.crossing(comp.getLast(), actPoint, checkLines.get(getCheckLinesIndex() + k))[0] != Calc.OUTSIDE) {
                             k++;
                             basic = basic + 20;
                         } else {
@@ -86,7 +85,7 @@ public class ComputerEasy extends ComputerTurnCore {
                             if (basic - dist[2] > maxDist) {
                                 maxDist = basic - dist[2];
                                 farestCollisionPoint = actPoint;
-                                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + k - 1))[0] != Calc.OUTSIDE) {
+                                if ((int) Calc.crossing(comp.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + k - 1))[0] != Calc.OUTSIDE) {
                                     newIndex = getCheckLinesIndex() + k - 1;
                                 }
                             }
@@ -105,16 +104,15 @@ public class ComputerEasy extends ComputerTurnCore {
             }
             if (farestCollisionPoint.isEqual(new Point())) {
                 //zadny z moznych tahu neni dobry a vybere se "nejlepsi z horsich"
-                System.out.println("zadna moznost nevyhovuje");
-                farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getFreePoints());
-                if ((int) Calc.crossing(f2.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + 1))[0] != Calc.OUTSIDE) {
+                farestCollisionPoint = Calc.findNearestPoint(comp.getLast(), model.getTurnMaker().getTurns().getFreePoints());
+                if ((int) Calc.crossing(comp.getLast(), farestCollisionPoint, checkLines.get(getCheckLinesIndex() + 1))[0] != Calc.OUTSIDE) {
                     newIndex = getCheckLinesIndex() + 1;
                 }
             }
             setCheckLinesIndex(newIndex);
         } else {
             //computer does not have other possibility then to crash
-            farestCollisionPoint = Calc.findNearestPoint(f2.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
+            farestCollisionPoint = Calc.findNearestPoint(comp.getLast(), model.getTurnMaker().getTurns().getCollisionPoints());
         }
         return farestCollisionPoint;
     }
@@ -130,8 +128,8 @@ public class ComputerEasy extends ComputerTurnCore {
      */
     private boolean checkColision(Segment prev, Segment next, Point actPoint) {
         boolean intersect = false;
-        int moveX = f2.getSide(actPoint); //posun na ose X pri zabrzdeni o 1
-        int moveY = f2.getSpeed(actPoint);//posun na ose Y pri zabrzdeni o 1
+        int moveX = comp.getSide(actPoint); //posun na ose X pri zabrzdeni o 1
+        int moveY = comp.getSpeed(actPoint);//posun na ose Y pri zabrzdeni o 1
         //cyklus bezi dokud jedna rychlost nebude 0
         while (intersect == false) {
             //posun X:
@@ -154,13 +152,13 @@ public class ComputerEasy extends ComputerTurnCore {
         intersect = false;
         //kontrola srazky s levou hranou:
         if (prev.getFirst().isEqual(next.getFirst()) == false) {
-            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getFirst(), next.getFirst())[0] != Calc.OUTSIDE) {
+            if ((int) Calc.crossing(comp.getLast(), actPoint, prev.getFirst(), next.getFirst())[0] != Calc.OUTSIDE) {
                 intersect = true;
             }
         }
         //kontrola srazky s pravou hranou:
         if (intersect == false && prev.getLast().isEqual(next.getLast()) == false) {
-            if ((int) Calc.crossing(f2.getLast(), actPoint, prev.getLast(), next.getLast())[0] != Calc.OUTSIDE) {
+            if ((int) Calc.crossing(comp.getLast(), actPoint, prev.getLast(), next.getLast())[0] != Calc.OUTSIDE) {
                 intersect = true;
             }
         }
@@ -176,7 +174,7 @@ public class ComputerEasy extends ComputerTurnCore {
      */
     private int brakingDist(Point turn) {
         int dist = 0;
-        int speed = f2.maxSpeed(turn);
+        int speed = comp.maxSpeed(turn);
         while (speed > 1) {
             speed--;
             dist = dist + speed;
@@ -206,21 +204,21 @@ public class ComputerEasy extends ComputerTurnCore {
         //prostredni bod mezi dvema nasledujicimi checkLines:
         Point midPoint = new Segment(mid1, mid2).getMidPoint();
         //prevladajici smer jizdy (side - smer X nebo speed - smer Y):
-        String direct = f2.maxDirect(click);
+        String direct = comp.maxDirect(click);
         double midDist = Calc.distance(midPoint, click);
         //formule je rychlejsi ve vertikalnim smeru - osa Y
         if (direct.equals(Formula.FORWARD)) {
             double dist1 = Math.floor(Math.abs((click.getY() - mid1.getY())));
             double dist2 = Math.floor(Math.abs((click.getY() - mid2.getY())));
             //kontrola, zda stred blizsi linie neni v protismeru:
-            if ((click.getY() > f2.getLast().getY() && mid1.getY() >= click.getY())
-                    || (click.getY() < f2.getLast().getY() && mid1.getY() <= click.getY())) {
+            if ((click.getY() > comp.getLast().getY() && mid1.getY() >= click.getY())
+                    || (click.getY() < comp.getLast().getY() && mid1.getY() <= click.getY())) {
             } else {
                 dist1 = -dist1;
             }
             //kontrola, zda stred vzdalenejsi linie neni v protismeru:
-            if ((click.getY() > f2.getLast().getY() && mid2.getY() >= click.getY())
-                    || (click.getY() < f2.getLast().getY() && mid2.getY() <= click.getY())) {
+            if ((click.getY() > comp.getLast().getY() && mid2.getY() >= click.getY())
+                    || (click.getY() < comp.getLast().getY() && mid2.getY() <= click.getY())) {
             } else {
                 dist2 = -dist2;
             }
@@ -231,14 +229,14 @@ public class ComputerEasy extends ComputerTurnCore {
             double dist1 = Math.floor(Math.abs((click.getX() - mid1.getX())));
             double dist2 = Math.floor(Math.abs((click.getX() - mid2.getX())));
             //kontrola, zda stred blizsi linie neni v protismeru:
-            if ((click.getX() > f2.getLast().getX() && mid1.getX() >= click.getX())
-                    || (click.getX() < f2.getLast().getX() && mid1.getX() <= click.getX())) {
+            if ((click.getX() > comp.getLast().getX() && mid1.getX() >= click.getX())
+                    || (click.getX() < comp.getLast().getX() && mid1.getX() <= click.getX())) {
             } else {
                 dist1 = -dist1;
             }
             //kontrola, zda stred vzdalenejsi linie neni v protismeru:
-            if ((click.getX() > f2.getLast().getX() && mid2.getX() >= click.getX())
-                    || (click.getX() < f2.getLast().getX() && mid2.getX() <= click.getX())) {
+            if ((click.getX() > comp.getLast().getX() && mid2.getX() >= click.getX())
+                    || (click.getX() < comp.getLast().getX() && mid2.getX() <= click.getX())) {
             } else {
                 dist2 = -dist2;
             }

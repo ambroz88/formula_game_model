@@ -31,8 +31,8 @@ public class ComputerModerate extends ComputerTurnCore {
     }
 
     @Override
-    public Point selectComputerTurn(int formulaPosition) {
-        comp = model.getTurnMaker().getFormula(formulaPosition);
+    public Point selectComputerTurn() {
+        comp = model.getTurnMaker().getFormula(model.getTurnMaker().getActID());
         List<Turns.Turn> possibleTurns = model.getTurnMaker().getTurns().getFreeTurns();
         Point farestCollisionPoint;
 

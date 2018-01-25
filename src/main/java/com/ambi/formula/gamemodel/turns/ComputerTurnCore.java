@@ -14,7 +14,7 @@ public abstract class ComputerTurnCore {
         checkLinesIndex = 0;
     }
 
-    public abstract Point selectComputerTurn(int computerFormulaPosition);
+    public abstract Point selectComputerTurn();
 
     public abstract void reset();
 

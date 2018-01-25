@@ -46,7 +46,6 @@ public class GameModel {
     private HintLabels hintLabels;
 
     private int stage;
-    private int player;
 
     public GameModel() {
         stage = BUILD_LEFT;
@@ -81,7 +80,7 @@ public class GameModel {
                 buildTrack.buildTrack(click, Track.RIGHT);
                 fireHint(getBuilder().getMessage());
             } else if (getStage() > EDIT_RELEASE && getStage() <= AUTO_FINISH) {
-                processPlayerTurn(click);
+                processTurn(click);
             }
 
         } else {
@@ -93,23 +92,33 @@ public class GameModel {
         //phase of the race
         if (getStage() > FIRST_TURN && getStage() <= AUTO_FINISH && getTurnMaker().getTurns().getTurn(position).isExist()) {
             Point click = getTurnMaker().getTurns().getTurn(position).getPoint();
-            processPlayerTurn(click);
+            processTurn(click);
             repaintScene();
         }
     }
 
-    private void processPlayerTurn(Point click) {
-        turnMaker.turn(click);
-        checkWinner();
-        //SINGLE mode
-        if (player == 1 && turnMaker.getActID() == 2 && getStage() != FIRST_TURN && getStage() != GAME_OVER) {
-            //computer turn
-            click = computer.selectComputerTurn(2);
-            turnMaker.turn(click);
-            if (turnMaker.getActID() == 2) {
-                fireHint(HintLabels.NEXT_COMP_TURN);
+    private synchronized void processTurn(Point click) {
+        boolean isComputerPlay = true;
+        while (isComputerPlay) {
+            if (turnMaker.getFormula(turnMaker.getActID()).getType() != FormulaType.Player && getStage() > FIRST_TURN) {
+
+                Point compTurn = computer.selectComputerTurn();
+                turnMaker.turn(compTurn);
+                if (turnMaker.getActID() == turnMaker.getFormulaCount()) {
+                    fireHint(HintLabels.NEXT_COMP_TURN);
+                }
+
+            } else {
+                turnMaker.turn(click);
             }
+
             checkWinner();
+
+            if (turnMaker.getFormula(turnMaker.getActID()).getType() == FormulaType.Player || getStage() < NORMAL_TURN) {
+                isComputerPlay = false;
+            } else if (getStage() == GAME_OVER) {
+                isComputerPlay = false;
+            }
         }
     }
 
@@ -158,17 +167,15 @@ public class GameModel {
      */
     public void prepareGame() {
         FormulaType computerLevel = turnMaker.getComputerType();
-        if (computerLevel != FormulaType.Player) { //single mode
+        if (computerLevel != FormulaType.Player) {
+            //single mode
             if (computerLevel == FormulaType.ComputerEasy) {
                 computer = new ComputerEasy(this);
             } else if (computerLevel == FormulaType.ComputerMedium) {
                 computer = new ComputerModerate(this);
             }
             computer.startAgain();
-            player = 1;
             getAnalyzer().analyzeTrack(getBuilder().getTrack());
-        } else {
-            player = 2;
         }
 
         resetPlayers();
@@ -177,7 +184,7 @@ public class GameModel {
         buildTrack.setRightWidth(3);
 
         setStage(FIRST_TURN);
-        turnMaker.setID(1, 2);   //it says which formula is on turn and which is second
+        turnMaker.setID(1);   //it says which formula is on turn and which is second
         fireHint(HintLabels.START_POSITION);
         firePropertyChange("startGame", 0, turnMaker.getActID()); // cought by Draw and TrackMenu
     }
