@@ -115,8 +115,8 @@ public class ComputerModerate extends ComputerTurnCore {
                         maxCount = crossedCount;
                         best = actPoint;
                     } else if (comp.maxSpeed(actPoint) == comp.maxSpeed(best)) {
-                        if (Calc.distance(actPoint, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + 1).getMidPoint())
-                                < Calc.distance(best, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + 1).getMidPoint())) {
+                        if (Calc.distance(actPoint, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + crossedCount + 1).getMidPoint())
+                                < Calc.distance(best, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + crossedCount + 1).getMidPoint())) {
                             maxCount = crossedCount;
                             best = actPoint;
                         }
