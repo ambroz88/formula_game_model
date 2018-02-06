@@ -48,7 +48,7 @@ public class TrackBuilder extends TrackEditor {
         message = HintLabels.EMPTY;
         if (!oppLine.isEmpty()) {
             if (actLine.isEmpty()) {
-                if (getPoints().isInside(click)) {
+                if (getPoints().contains(click)) {
                     //builded side is still empty and user clicked on one of the start points
                     drawFinishTurns();
                     getPoints().addPoint(click);//in point of click there will be drawn a point
@@ -61,7 +61,7 @@ public class TrackBuilder extends TrackEditor {
                 //point click is good and IT IS POSSIBLE TO ADD IT to the track
                 addPoint(side, click);
 
-                boolean ready = isReadyForDraw() && getPoints().isInside(click);
+                boolean ready = isReadyForDraw() && getPoints().contains(click);
                 if (ready) {
                     finishIndexes();
                 }
@@ -257,7 +257,7 @@ public class TrackBuilder extends TrackEditor {
     private void removeLast(int side) {
         removeLastPoint(side);
         if (!getLine(side).isEmpty()) {
-            boolean ready = isReady() && getPoints().isInside(getLine(side).getLast());
+            boolean ready = isReady() && getPoints().contains(getLine(side).getLast());
             if (ready) {
                 getModel().fireTrackReady(ready);
             }

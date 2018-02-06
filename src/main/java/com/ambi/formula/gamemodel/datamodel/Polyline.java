@@ -94,6 +94,21 @@ public class Polyline extends Segment {
         }
     }
 
+    /**
+     * This method controls if the point click is one of the point in polyline
+     *
+     * @param click is <code>point</code> which is controlled
+     * @return true if the point is part of polyline and false if not
+     */
+    public boolean contains(Point click) {
+        for (Point point : points) {
+            if (click.isEqual(point) == true) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     //===================== OTHER OPERATIONS =====================
     public boolean isEmpty() {
         return points.isEmpty();

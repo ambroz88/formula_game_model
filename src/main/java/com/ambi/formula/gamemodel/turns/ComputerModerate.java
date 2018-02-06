@@ -85,6 +85,8 @@ public class ComputerModerate extends ComputerTurnCore {
         double brakingDistance;
         double collisionDistance;
         double maxCount = 0;
+        double minChecklineDist = 999;
+        double distance;
         Point collision;
         Point best = null;
 
@@ -104,30 +106,27 @@ public class ComputerModerate extends ComputerTurnCore {
             brakingDistance = calculateBreakingDistance(actPoint);
 
             if (collisionDistance > brakingDistance || collisionDistance == 0) {
+
+                int checkLineIndex = crossedLineIndex(actPoint) + 1;
+                distance = Calc.distance(actPoint, Calc.baseOfAltitude(model.getAnalyzer().getCheckLines().get(checkLineIndex), actPoint));
+
                 if (crossedCount > maxCount) {
                     maxCount = crossedCount;
                     best = actPoint;
-                } else if (crossedCount == maxCount) {
-                    if (best == null) {
-                        best = actPoint;
-                    }
-                    if (comp.maxSpeed(actPoint) > comp.maxSpeed(best)) {
-                        maxCount = crossedCount;
-                        best = actPoint;
-                    } else if (comp.maxSpeed(actPoint) == comp.maxSpeed(best)) {
-                        if (Calc.distance(actPoint, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + crossedCount + 1).getMidPoint())
-                                < Calc.distance(best, model.getAnalyzer().getCheckLines().get(getCheckLinesIndex() + crossedCount + 1).getMidPoint())) {
-                            maxCount = crossedCount;
-                            best = actPoint;
-                        }
-                    }
+                    minChecklineDist = distance;
+                } else if (crossedCount == maxCount && distance < minChecklineDist) {
+                    minChecklineDist = distance;
+                    maxCount = crossedCount;
+                    best = actPoint;
                 }
+
             }
         }
 
         if (best == null) {
             best = Calc.findNearestTurn(comp.getLast(), possibleTurns);
         }
+
         correctLineIndex(best);
         return best;
     }
@@ -195,17 +194,24 @@ public class ComputerModerate extends ComputerTurnCore {
     }
 
     private void correctLineIndex(Point best) {
+        setCheckLinesIndex(crossedLineIndex(best));
+    }
+
+    private int crossedLineIndex(Point best) {
         List<Segment> checkLines = model.getAnalyzer().getCheckLines();
         int index = getCheckLinesIndex();
+        int intersect;
 
         for (int i = index + 1; i < checkLines.size(); i++) {
-            if ((int) Calc.crossing(comp.getLast(), best, checkLines.get(i))[0] != Calc.OUTSIDE) {
-                increaseIndex();
+            intersect = (int) Calc.crossing(comp.getLast(), best, checkLines.get(i))[0];
+            if (intersect == Calc.INSIDE) {
+                index++;
+            } else if (intersect == Calc.EDGE && Calc.pointPosition(checkLines.get(i), best) != Calc.INSIDE) {
+                index++;
             } else {
                 break;
             }
         }
-
+        return index;
     }
-
 }

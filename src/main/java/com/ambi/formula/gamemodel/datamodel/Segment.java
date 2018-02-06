@@ -61,21 +61,6 @@ public class Segment {
         }
     }
 
-    /**
-     * This method controls if the point click is one of the point in polyline
-     *
-     * @param click is <code>point</code> which is controlled
-     * @return true if the point is part of polyline and false if not
-     */
-    public boolean isInside(Point click) {
-        for (Point point : points) {
-            if (click.isEqual(point) == true) {
-                return true;
-            }
-        }
-        return false;
-    }
-
     //=================== GETTERS ====================
     public int getLength() {
         return points.size();

@@ -20,20 +20,48 @@ public abstract class Calc {
     public static final int INSIDE = 1;
 
     /**
-     * This method finds out if two segments have intersect. One segment is defined by two separated
-     * points. Second segment is defined by polyline. It doesn't matter on order.
+     * This method finds out if two segments have intersect. Each segment is defined by Segment
+     * object. It doesn't matter on order.
      *
-     * @param a is first point of first segment
-     * @param b is second point of first segment
-     * @param edge is second segment (polyline with length = 2)
+     * @param segment1 is first segment (polyline with length = 2)
+     * @param segment2 is second segment (polyline with length = 2)
      * @return ArrayList of length 2. First value is Integer which means if there is intersect (1
      * for intersect, 0 for touch and -1 for no intersect. Second value in List is Point where is
      * the intersect.
      */
-    public static Object[] crossing(Point a, Point b, Segment edge) {
-        Point c = edge.getFirst();
-        Point d = edge.getLast();
-        return crossing(a, b, c, d);
+    public static Object[] crossing(Segment segment1, Segment segment2) {
+        int intersect = OUTSIDE;
+        Point colPoint = calculateIntersect(segment1, segment2.getFirst(), segment2.getLast());
+
+        if (colPoint != null) {
+            if (pointPosition(segment1, colPoint) == INSIDE && pointPosition(segment2, colPoint) == INSIDE) {
+                //usecky se protinaji uvnitr
+                intersect = INSIDE;
+            } else if (pointPosition(segment1, colPoint) == EDGE && pointPosition(segment2, colPoint) == EDGE) {
+                //usecky se spolecne dotykaji v jednom konci
+                intersect = EDGE;
+            } else if ((pointPosition(segment1, colPoint) == EDGE && pointPosition(segment2, colPoint) == INSIDE)
+                    || (pointPosition(segment2, colPoint) == EDGE && pointPosition(segment1, colPoint) == INSIDE)) {
+                //konec jedne usecky se dotyka vnitrku druhe usecky
+                intersect = EDGE;
+            }
+        }
+        return new Object[]{intersect, colPoint};
+    }
+
+    /**
+     * This method finds out if two segments have intersect. One segment is defined by two separated
+     * points. Second segment is defined by Segment.
+     *
+     * @param a is first point of first segment
+     * @param b is second point of first segment
+     * @param segment is segment (polyline with length = 2)
+     * @return ArrayList of length 2. First value is Integer which means if there is intersect (1
+     * for intersect, 0 for touch and -1 for no intersect. Second value in List is Point where is
+     * the intersect.
+     */
+    public static Object[] crossing(Point a, Point b, Segment segment) {
+        return crossing(new Segment(a, b), segment);
     }
 
     /**
@@ -49,44 +77,27 @@ public abstract class Calc {
      * the intersect.
      */
     public static Object[] crossing(Point a, Point b, Point c, Point d) {
-        int intersect = OUTSIDE;
-        Point colPoint = calculateIntersect(a, b, c, d);
-
-        if (colPoint != null) {
-            if (pointPosition(a, b, colPoint) == INSIDE && pointPosition(c, d, colPoint) == INSIDE) {
-                //usecky se protinaji uvnitr
-                intersect = INSIDE;
-            } else if (pointPosition(a, b, colPoint) == EDGE && pointPosition(c, d, colPoint) == EDGE) {
-                //usecky se spolecne dotykaji v jednom konci
-                intersect = EDGE;
-            } else if ((pointPosition(a, b, colPoint) == EDGE && pointPosition(c, d, colPoint) == INSIDE)
-                    || (pointPosition(c, d, colPoint) == EDGE && pointPosition(a, b, colPoint) == INSIDE)) {
-                //konec jedne usecky se dotyka vnitrku druhe usecky
-                intersect = EDGE;
-            }
-        }
-        return new Object[]{intersect, colPoint};
+        return crossing(a, b, new Segment(c, d));
     }
 
     public static Point halfLineAndSegmentIntersection(Segment segment, Point lineStart, Point lineEnd) {
-        Point segmentStart = segment.getFirst();
-        Point segmentEnd = segment.getLast();
+        Point colPoint = calculateIntersect(segment, lineStart, lineEnd);
 
-        Point colPoint = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
         if (colPoint != null) {
-            int intersectPosition = pointPosition(segmentStart, segmentEnd, colPoint);
-            if (intersectPosition == OUTSIDE || intersectPosition == INSIDE && isPointBehind(lineStart, lineEnd, colPoint)) {
+            int intersectPosition = pointPosition(segment, colPoint);
+            if (intersectPosition == OUTSIDE || intersectPosition != OUTSIDE && isPointBehind(lineStart, lineEnd, colPoint)) {
                 //line intersects the segment
                 colPoint = null;
             }
         }
+
         return colPoint;
     }
 
-    public static Point calculateCollisionPoint(Point segmentStart, Point segmentEnd, Point lineStart, Point lineEnd) {
-        Point collision = calculateIntersect(segmentStart, segmentEnd, lineStart, lineEnd);
+    public static Point calculateCollisionPoint(Segment segment, Point lineStart, Point lineEnd) {
+        Point collision = calculateIntersect(segment, lineStart, lineEnd);
 
-        if (collision != null && pointPosition(segmentStart, segmentEnd, collision) != INSIDE) {
+        if (collision != null && pointPosition(segment, collision) != INSIDE) {
             //line intersects the segment
             collision = null;
         }
@@ -94,8 +105,10 @@ public abstract class Calc {
         return collision;
     }
 
-    private static Point calculateIntersect(Point a, Point b, Point c, Point d) {
+    private static Point calculateIntersect(Segment segment, Point c, Point d) {
         Point colPoint = null;
+        Point a = segment.getFirst();
+        Point b = segment.getLast();
 
         //t vychazi z parametrickeho vyjadreni primky
         double t = (a.x * d.y - a.x * c.y - c.x * d.y - d.x * a.y + d.x * c.y + c.x * a.y)
@@ -115,13 +128,15 @@ public abstract class Calc {
     /**
      * Metoda urcuje pozici bodu inter vuci usecce AB
      *
-     * @param a zacatecni bod usecky
-     * @param b koncovy bod usecky
+     * @param segment is segment where the point will be compared
      * @param inter
      * @return - hodnoty: 1 pro polohu uvnitr usecky, 0 pro polohu na kraji a -1 kdyz lezi mimo
      * usecku
      */
-    private static int pointPosition(Point a, Point b, Point inter) {
+    public static int pointPosition(Segment segment, Point inter) {
+        Point a = segment.getFirst();
+        Point b = segment.getLast();
+
         double ix = inter.x;
         double iy = inter.y;
 
