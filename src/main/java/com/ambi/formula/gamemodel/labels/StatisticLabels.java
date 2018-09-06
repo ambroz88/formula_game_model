@@ -20,11 +20,16 @@ public class StatisticLabels {
     private Properties properties;
 
     public StatisticLabels(String language) {
+        String fileName = language + "/StatPanel.properties";
         try {
-            this.properties = FileIO.loadProperties(language + "/StatPanel.properties");
+            this.properties = FileIO.loadProperties(fileName);
         } catch (IOException ex) {
-            Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
-            this.properties = new Properties();
+            try {
+                this.properties = FileIO.loadProperties(this.getClass().getClassLoader().getResource(fileName).getFile());
+            } catch (IOException ex1) {
+                Logger.getLogger(StatisticLabels.class.getName()).log(Level.SEVERE, null, ex1);
+                this.properties = new Properties();
+            }
         }
     }
 

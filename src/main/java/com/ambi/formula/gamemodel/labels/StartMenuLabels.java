@@ -21,11 +21,16 @@ public class StartMenuLabels {
     private Properties properties;
 
     public StartMenuLabels(String language) {
+        String fileName = language + "/StartMenu.properties";
         try {
-            this.properties = FileIO.loadProperties(language + "/StartMenu.properties");
+            this.properties = FileIO.loadProperties(fileName);
         } catch (IOException ex) {
-            Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
-            this.properties = new Properties();
+            try {
+                this.properties = FileIO.loadProperties(this.getClass().getClassLoader().getResource(fileName).getFile());
+            } catch (IOException ex1) {
+                Logger.getLogger(DialogLabels.class.getName()).log(Level.SEVERE, null, ex);
+                this.properties = new Properties();
+            }
         }
     }
 
